@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مسار مصر • Masar Egypt</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Cairo', 'Plus Jakarta Sans', sans-serif;
+      background-color: #141224;
+    }
+    .en-font {
+      font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+    }
+    .phone-frame {
+      width: 71.9mm;
+      height: 150.0mm;
+      max-width: 100%;
+      background-color: #F6F4EC;
+      border-radius: 28px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55), 0 0 0 8px #25213d;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .app-screen, #profile-side-drawer {
+      zoom: 0.78;
+    }
+    .app-screen {
+      height: 100%;
+      overflow: hidden;
+    }
+    /* Custom subtle scrollbar inside the phone */
+    .phone-frame ::-webkit-scrollbar {
+      width: 4px;
+    }
+    .phone-frame ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .phone-frame ::-webkit-scrollbar-thumb {
+      background: rgba(31, 27, 56, 0.2);
+      border-radius: 10px;
+    }
+    @media (max-width: 480px) {
+      body {
+        background-color: #F6F4EC;
+        padding: 0;
+      }
+      .phone-frame {
+        max-width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+    .masar-card-gradient {
+      background: linear-gradient(135deg, #1E2547 0%, #104E5B 45%, #007A6E 100%);
+    }
+    .qr-grid-pattern {
+      background-image: radial-gradient(#1F1B38 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center py-4 px-2 select-none">
+
+  <!-- Mobile App Viewport -->
+  <div class="phone-frame">
+
+    <!-- ==========================================
+         SLIDE-OUT PROFILE SIDE DRAWER (Opens when clicking Profile Photo)
+    =========================================== -->
+    <div id="profile-drawer-backdrop" onclick="toggleProfileDrawer(false)"
+      class="hidden absolute inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity"></div>
+
+    <aside id="profile-side-drawer"
+      class="hidden absolute top-0 left-0 bottom-0 w-72 bg-[#FAF9F5] z-50 shadow-2xl border-r border-gray-200 flex flex-col justify-between p-5">
+      <div>
+        <!-- User Profile Header inside Drawer -->
+        <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow">
+              <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+            </div>
+            <div>
+              <div class="live-user-name font-extrabold text-sm text-[#1F1B38]">Mariam Fathy</div>
+              <div class="live-user-email text-[11px] text-gray-500">Passenger1@example.com</div>
+              <span class="inline-block mt-0.5 bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                الرصيد: <span class="dynamic-wallet-balance">100.00</span> ج.م
+              </span>
+            </div>
+          </div>
+          <button onclick="toggleProfileDrawer(false)" class="w-8 h-8 rounded-full bg-gray-200/70 text-[#1F1B38] flex items-center justify-center font-bold hover:bg-gray-300 cursor-pointer">
+            ✕
+          </button>
+        </div>
+
+        <!-- Side Navigation Menu Items -->
+        <nav class="mt-4 space-y-2" dir="rtl">
+          <button onclick="navigateFromDrawer('home')"
+            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+            <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🏠</span>
+            <div class="text-right">
+              <div>الرئيسية (حجز الرحلات)</div>
+              <div class="text-[10px] text-gray-500 font-medium">خطوط المترو و LRT والأتوبيس</div>
+            </div>
+          </button>
+
+          <button onclick="navigateFromDrawer('history')"
+            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+            <span class="w-8 h-8 rounded-xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center">🧾</span>
+            <div class="text-right">
+              <div>الإيصالات والتذاكر السابقة</div>
+              <div class="text-[10px] text-gray-500 font-medium">سجل الرحلات والتذاكر المحجوزة</div>
+            </div>
+          </button>
+
+          <button onclick="navigateFromDrawer('wallet')"
+            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+            <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🪪</span>
+            <div class="text-right">
+              <div>المحفظة وكارت مسار</div>
+              <div class="text-[10px] text-gray-500 font-medium">الرصيد المتاح وشحن الكارت</div>
+            </div>
+          </button>
+
+          <button onclick="navigateFromDrawer('settings')"
+            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+            <span class="w-8 h-8 rounded-xl bg-[#231942] text-white flex items-center justify-center">⚙️</span>
+            <div class="text-right">
+              <div>الإعدادات والبيانات الشخصية</div>
+              <div class="text-[10px] text-gray-500 font-medium">تعديل الاسم والبريد الإلكتروني</div>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom Logout Button -->
+      <div class="pt-3 border-t border-gray-200">
+        <button onclick="navigateFromDrawer('login')"
+          class="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer">
+          <span>تسجيل الخروج / تبديل الحساب</span>
+          <span>↪</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         SCREEN 1: ONBOARDING / SPLASH SCREEN
+    =========================================== -->
+    <section id="screen-splash" class="app-screen flex-1 flex flex-col items-center justify-between bg-[#F6F4EC] relative en-font">
+      <img src="assets/splash.png" alt="Masar Egypt Splash" class="w-full h-full object-cover flex-1" />
+
+      <div class="absolute bottom-7 inset-x-6 flex flex-col items-center gap-2.5">
+        <!-- Loading State (shown first on reload) -->
+        <div id="splash-loading-box" class="w-full py-3.5 px-4 rounded-2xl bg-[#1F1B38]/95 text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg">
+          <span class="w-4 h-4 border-2 border-[#00E5B0] border-t-transparent rounded-full animate-spin"></span>
+          <span>Loading Masar Egypt...</span>
+        </div>
+
+        <!-- Action Buttons (shown after onboarding loading finishes) -->
+        <div id="splash-actions-box" class="hidden w-full flex flex-col items-center gap-2.5">
+          <button type="button" onclick="showScreen('signup')"
+            class="w-full py-3.5 rounded-2xl bg-[#231942] hover:bg-[#1a1233] text-white font-bold text-sm shadow-[0_5px_0_#A3C6BE] active:translate-y-0.5 transition-all cursor-pointer">
+            Create Account
+          </button>
+          <button type="button" onclick="showScreen('login')"
+            class="w-full py-2.5 rounded-2xl bg-white/95 hover:bg-white text-[#231942] border-2 border-[#231942] font-bold text-xs shadow-sm transition-all cursor-pointer">
+            Have an account? Log In
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 2: LOG IN SCREEN
+    =========================================== -->
+    <section id="screen-login" class="app-screen hidden flex-1 flex flex-col justify-center px-6 py-6 bg-[#F6F4EC] en-font overflow-y-auto">
+      <div class="w-full my-auto flex flex-col justify-center">
+        <h1 class="text-[36px] font-extrabold text-[#151D3B] text-center tracking-tight mb-6">Log In</h1>
+
+        <!-- Unified Segmented Toolbox Bar with Thick Border -->
+        <div class="w-full grid grid-cols-2 items-center border-[3px] border-[#231942] rounded-xl p-1.5 mb-6 bg-white/60 shadow-xs">
+          <button type="button" onclick="showScreen('signup')"
+            class="text-[#231942] text-sm font-bold py-2.5 rounded-lg text-center cursor-pointer hover:bg-[#231942]/10 transition">
+            Sign Up
+          </button>
+          <button type="button"
+            class="bg-[#231942] text-white text-sm font-bold py-2.5 rounded-lg text-center shadow-sm">
+            Log In
+          </button>
+        </div>
+
+        <!-- Form Card -->
+        <form onsubmit="handleLogin(event)" class="w-full bg-white rounded-xl p-5 shadow-sm border border-gray-200/80 flex flex-col gap-4">
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1.5 text-left">Email</label>
+            <input id="login-email" type="email" value="Passenger1@example.com" placeholder="Enter your email"
+              class="w-full px-3.5 py-2.5 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1.5 text-left">Password</label>
+            <input id="login-password" type="password" placeholder="Enter your password" required
+              class="w-full px-3.5 py-2.5 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+            <div id="login-status-msg" class="text-[11px] text-gray-500 text-left mt-1.5 empty:hidden"></div>
+          </div>
+
+          <button id="login-submit-btn" type="submit"
+            class="w-full py-2.5 rounded-lg bg-[#231942] hover:bg-[#1a1233] text-white text-sm font-semibold transition cursor-pointer mt-1">
+            Sign In
+          </button>
+
+          <div class="text-left">
+            <a href="javascript:void(0)" onclick="alert('Please contact support or sign up with a new account.')"
+              class="text-sm text-gray-800 underline hover:text-[#231942]">Forgot password?</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 3: SIGN UP SCREEN
+    =========================================== -->
+    <section id="screen-signup" class="app-screen hidden flex-1 flex flex-col justify-center px-6 py-6 bg-[#F6F4EC] en-font overflow-y-auto">
+      <div class="w-full my-auto flex flex-col justify-center">
+        <h1 class="text-[36px] font-extrabold text-[#151D3B] text-center tracking-tight mb-5">Sign Up</h1>
+
+        <!-- Unified Segmented Toolbox Bar with Thick Border -->
+        <div class="w-full grid grid-cols-2 items-center border-[3px] border-[#231942] rounded-xl p-1.5 mb-5 bg-white/60 shadow-xs">
+          <button type="button" onclick="showScreen('login')"
+            class="text-[#231942] text-sm font-bold py-2.5 rounded-lg text-center cursor-pointer hover:bg-[#231942]/10 transition">
+            Log In
+          </button>
+          <button type="button"
+            class="bg-[#231942] text-white text-sm font-bold py-2.5 rounded-lg text-center shadow-sm">
+            Sign Up
+          </button>
+        </div>
+
+        <!-- Form Card -->
+        <form onsubmit="handleSignUp(event)" class="w-full bg-white rounded-xl p-5 shadow-sm border border-gray-200/80 flex flex-col gap-3.5">
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Name</label>
+            <input id="signup-name" type="text" placeholder="Enter your name" required
+              class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Surname</label>
+            <input id="signup-surname" type="text" placeholder="Enter your surname"
+              class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Email</label>
+            <input id="signup-email" type="email" placeholder="Enter your email" required
+              class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Password</label>
+            <input id="signup-password" type="password" placeholder="Enter your password"
+              class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
+            <div id="signup-status-msg" class="text-[11px] text-gray-500 text-left mt-1.5 empty:hidden"></div>
+          </div>
+
+          <button id="signup-submit-btn" type="submit"
+            class="w-full py-2.5 rounded-lg bg-[#231942] hover:bg-[#1a1233] text-white text-sm font-semibold transition cursor-pointer mt-1">
+            Submit
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 4: HOME SCREEN (مسار)
+    =========================================== -->
+    <section id="screen-home" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Header -->
+      <div class="px-4 pt-4 pb-2 flex items-center justify-between border-b border-gray-200/50">
+        <!-- Left Avatar (Opens Side Toolbar Drawer) & Bell -->
+        <div class="flex items-center gap-3">
+          <button onclick="toggleProfileDrawer(true)" class="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow hover:scale-105 transition cursor-pointer" title="القائمة الجانبية (الإيصالات والمحفظة والإعدادات)">
+            <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+          </button>
+          <button onclick="toggleProfileDrawer(true)" class="text-[#1F1B38] hover:text-[#00C5A1] transition cursor-pointer" title="القائمة">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 12h16M4 18h12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Right Masar Title & Location -->
+        <div class="flex items-center gap-2.5">
+          <div class="text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-xs font-bold text-[#1F1B38]">Home</span>
+              <span class="text-gray-300">|</span>
+              <span class="text-lg font-extrabold text-[#1F1B38]">مسار</span>
+            </div>
+            <div class="flex items-center justify-end gap-1 text-[11px] font-bold text-[#009688] whitespace-nowrap" dir="rtl">
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              <span id="top-header-route-subtitle">القاهرة - الخط الثالث للمترو</span>
+            </div>
+          </div>
+          <div class="w-6 h-8 rounded bg-[#EFECE1] flex items-center justify-center overflow-hidden shadow-xs">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Scrollable Content -->
+      <div class="px-4 py-3 flex-1 overflow-y-auto space-y-3.5">
+
+        <!-- Teal Route Station Selector Card (Full-Width Stacked RTL Rows so Station Names are 100% Visible Always) -->
+        <div class="bg-[#2B9085] rounded-2xl p-3 text-white shadow-sm relative" dir="rtl">
+          <div class="flex items-center gap-2.5">
+            <!-- Stacked Station Pickers (Full Width) -->
+            <div class="flex-1 space-y-2">
+              <!-- Row 1: Boarding Station (محطة الركوب) -->
+              <div class="relative">
+                <button type="button" onclick="toggleStationMenu('boarding')"
+                  class="w-full bg-[#1F1B38]/25 hover:bg-[#1F1B38]/35 border border-white/25 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-right transition cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#00E5B0] shrink-0"></span>
+                    <div>
+                      <div class="text-[9px] text-teal-100/90 font-bold leading-none mb-0.5">محطة الركوب</div>
+                      <div id="boarding-station-label" class="text-white font-extrabold text-xs leading-snug">عدلي منصور</div>
+                    </div>
+                  </div>
+                  <svg class="w-4 h-4 text-[#00E5B0] shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                <select id="boarding-station-select" onchange="onStationDropdownChange()" class="hidden">
+                  <option value="1">عدلي منصور</option>
+                </select>
+                <!-- Custom App-Styled Dropdown Menu for Boarding Station -->
+                <div id="boarding-station-menu"
+                  class="hidden absolute right-0 left-0 top-full mt-1 z-40 bg-[#F6F4EC] border-2 border-[#231942] rounded-2xl shadow-xl max-h-48 overflow-y-auto p-1.5 space-y-1 text-[#1F1B38]">
+                </div>
+              </div>
+
+              <!-- Row 2: Alighting Station (الوجهة / محطة الوصول) -->
+              <div class="relative">
+                <button type="button" onclick="toggleStationMenu('alighting')"
+                  class="w-full bg-[#1F1B38]/25 hover:bg-[#1F1B38]/35 border border-white/25 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-right transition cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                    <div>
+                      <div class="text-[9px] text-teal-100/90 font-bold leading-none mb-0.5">الوجهة (محطة الوصول)</div>
+                      <div id="alighting-station-label" class="text-white font-extrabold text-xs leading-snug">جامعة القاهرة</div>
+                    </div>
+                  </div>
+                  <svg class="w-4 h-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                <select id="alighting-station-select" onchange="onStationDropdownChange()" class="hidden">
+                  <option value="34">جامعة القاهرة</option>
+                </select>
+                <!-- Custom App-Styled Dropdown Menu for Alighting Station -->
+                <div id="alighting-station-menu"
+                  class="hidden absolute right-0 left-0 top-full mt-1 z-40 bg-[#F6F4EC] border-2 border-[#231942] rounded-2xl shadow-xl max-h-48 overflow-y-auto p-1.5 space-y-1 text-[#1F1B38]">
+                </div>
+              </div>
+            </div>
+
+            <!-- Left Swap Button -->
+            <button type="button" onclick="swapStations()" title="تبديل المحطات"
+              class="w-9 h-9 rounded-full bg-white text-[#2B9085] flex items-center justify-center shadow-md hover:scale-105 active:rotate-180 transition-all cursor-pointer shrink-0">
+              <svg class="w-4 h-4 rotate-90" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M7 10l-4-4 4-4M3 6h14M17 14l4 4-4 4M21 18H7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Subtitle Note -->
+        <div class="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-gray-600">
+          <span>أو ادفع دلوقتي بمحفظتك لما تسجل بال QR</span>
+          <svg class="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+
+        <!-- Primary CTA: Pay Now -->
+        <div class="px-3">
+          <button onclick="showScreen('payment')"
+            class="w-full py-3.5 rounded-2xl bg-[#231942] hover:bg-[#1a1233] text-white font-bold text-sm flex items-center justify-center shadow-[0_6px_0_#A3C6BE] active:translate-y-0.5 transition-all cursor-pointer">
+            <span>ادفع الان</span>
+          </button>
+        </div>
+
+        <!-- Transit Mode Filter Pills (flex-auto so each pill sizes to its text + generous horizontal padding) -->
+        <div class="flex items-center justify-between gap-1.5 pt-2">
+          <button onclick="filterCategory('metro')" data-cat="metro"
+            class="cat-tab-btn h-9 flex-auto flex items-center justify-center gap-1.5 px-3 rounded-full bg-white text-[#1F1B38] text-[10px] font-extrabold whitespace-nowrap shadow-xs cursor-pointer transition-all">
+            <span>مترو الانفاق</span>
+            <svg class="w-3.5 h-3.5 shrink-0 text-[#00C5A1]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M8 15h.01M16 15h.01"/>
+            </svg>
+          </button>
+
+          <button onclick="filterCategory('lrt')" data-cat="lrt"
+            class="cat-tab-btn h-9 flex-auto flex items-center justify-center gap-1.5 px-3.5 rounded-full bg-white text-[#1F1B38] text-[10px] font-extrabold whitespace-nowrap shadow-xs cursor-pointer transition-all">
+            <span>القطار الكهربائي</span>
+            <svg class="w-3.5 h-3.5 shrink-0 text-[#00C5A1]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </button>
+
+          <button onclick="filterCategory('bus')" data-cat="bus"
+            class="cat-tab-btn h-9 flex-auto flex items-center justify-center gap-1.5 px-3 rounded-full bg-[#1F1B38] text-white text-[10px] font-extrabold whitespace-nowrap shadow-xs cursor-pointer transition-all">
+            <span>الاتوبيس</span>
+            <svg class="w-3.5 h-3.5 shrink-0 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Section Header: Available Trips (100% Visible Full Heading + Custom App-Styled Filter Dropdown) -->
+        <div class="flex items-center justify-between gap-1.5 pt-1.5 relative" dir="rtl">
+          <div class="flex items-center gap-1 text-[#1F1B38] font-extrabold text-[11.5px] text-right">
+            <svg class="w-3.5 h-3.5 text-[#00C5A1] shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+            <span id="active-category-heading" class="leading-snug">رحلات مترو الأنفاق</span>
+          </div>
+
+          <!-- Custom Masar-Styled Filter Dropdown Button & Popover -->
+          <div class="relative shrink-0">
+            <button type="button" onclick="toggleTripsFilterMenu()" id="trips-filter-dropdown-btn"
+              class="flex items-center gap-1 bg-[#231942] hover:bg-[#1a1233] text-white text-[10px] font-extrabold px-2.5 py-1.5 rounded-full shadow-[0_3px_0_#A3C6BE] active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap">
+              <svg class="w-3 h-3 text-[#00E5B0] shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+              </svg>
+              <span id="trips-filter-dropdown-label">عرض كل الرحلات</span>
+              <svg class="w-3 h-3 text-[#00E5B0] shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+
+            <div id="trips-filter-dropdown-menu"
+              class="hidden absolute left-0 top-full mt-1.5 w-44 z-40 bg-[#F6F4EC] border-2 border-[#231942] rounded-2xl shadow-xl p-1.5 space-y-1">
+              <button type="button" onclick="selectTripsFilterOption('all')" data-filter="all"
+                class="trips-filter-opt w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#231942] text-white text-[11px] font-bold transition cursor-pointer">
+                <span>عرض كل الرحلات</span>
+                <span class="filter-check text-[#00E5B0]">✓</span>
+              </button>
+              <button type="button" onclick="selectTripsFilterOption('next_hour')" data-filter="next_hour"
+                class="trips-filter-opt w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] text-[11px] font-bold transition cursor-pointer">
+                <span>خلال الساعة القادمة</span>
+                <span class="filter-check text-[#00E5B0] hidden">✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Routes Cards Container -->
+        <div id="routes-list-container" class="space-y-3 pb-4"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 5: PAY WITH QR SCREEN
+    =========================================== -->
+    <section id="screen-qr" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-bold text-sm text-[#1F1B38]">Pay with QR</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Pill (Toggles between QR Camera View and Pay with Masar Card View) -->
+      <div class="px-6 pt-4">
+        <div class="bg-[#00B8A0] p-1 rounded-full flex items-center">
+          <button id="qr-tab-wallet-btn" onclick="switchQrScreenTab('card-pay')"
+            class="flex-1 py-2 rounded-full text-[#1F1B38] font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+            <span>دفع بمحفظه مسار</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+          </button>
+          <button id="qr-tab-camera-btn" onclick="switchQrScreenTab('camera')"
+            class="flex-1 py-2 rounded-full bg-[#231942] text-[#00E5B0] font-bold text-xs flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer">
+            <span>دفع بال QR</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- SUB-VIEW A: Center QR Scanner Camera Frame -->
+      <div id="qr-camera-subview" class="flex-1 flex flex-col justify-between">
+        <div class="flex-1 flex flex-col items-center justify-center px-8">
+          <div onclick="showScreen('payment')" title="Click to simulate scanning vehicle QR"
+            class="relative w-64 h-64 flex items-center justify-center cursor-pointer group">
+            <!-- 4 Teal Corner Brackets -->
+            <div class="absolute top-0 left-0 w-9 h-9 bg-[#00C5A1] rounded-tl-xl border-t-4 border-l-4 border-[#1F1B38]"></div>
+            <div class="absolute top-0 right-0 w-9 h-9 bg-[#00C5A1] rounded-tr-xl border-t-4 border-r-4 border-[#1F1B38]"></div>
+            <div class="absolute bottom-0 left-0 w-9 h-9 bg-[#00C5A1] rounded-bl-xl border-b-4 border-l-4 border-[#1F1B38]"></div>
+            <div class="absolute bottom-0 right-0 w-9 h-9 bg-[#00C5A1] rounded-br-xl border-b-4 border-r-4 border-[#1F1B38]"></div>
+
+            <!-- Interactive QR Code Box -->
+            <div class="w-52 h-52 bg-white p-3 rounded-2xl shadow-md flex items-center justify-center relative group-hover:scale-105 transition">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=MASAR-EGYPT-TRIP-67" alt="QR Code" class="w-full h-full" />
+              <div class="absolute w-10 h-14 bg-[#F6F4EC] rounded shadow flex items-center justify-center p-1">
+                <img src="assets/splash.png" alt="Masar" class="w-full h-full object-contain" />
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-gray-600 font-semibold text-center mt-4 leading-relaxed px-4" dir="rtl">
+            وجّه الكاميرا نحو كود QR الملصق داخل العربية أو على زجاج السائق للدفع الفوري
+          </p>
+          <button onclick="showScreen('payment')" class="mt-2.5 text-xs font-extrabold text-[#009688] underline cursor-pointer">
+            تم مسح الكود؟ اضغط هنا للمتابعة للدفع ←
+          </button>
+        </div>
+
+        <!-- Bottom Camera Action Buttons -->
+        <div class="px-10 pb-8 flex items-center justify-between">
+          <button onclick="showScreen('payment')" class="w-11 h-11 rounded-full bg-[#231942] text-[#00E5B0] flex items-center justify-center shadow-lg cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </button>
+          <button onclick="showScreen('payment')" class="w-11 h-11 rounded-full bg-[#231942] text-[#00E5B0] flex items-center justify-center shadow-lg cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- SUB-VIEW B: Pay Directly with Masar Card (Shows ONLY Masar Card + Pay Button + شحن كارت مسار Button) -->
+      <div id="qr-card-pay-subview" class="hidden flex-1 flex flex-col justify-between p-5 overflow-y-auto">
+        <div class="space-y-4">
+          <!-- Virtual Masar Transit Card Only -->
+          <div class="masar-card-gradient rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-[#99F6E4]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16"/></svg>
+                </div>
+                <div>
+                  <div class="font-extrabold text-sm text-[#1F1B38] tracking-wide">MASAR EGYPT</div>
+                  <div class="text-[10px] text-teal-100 font-semibold">كارت النقل الموحد</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-[#1F1B38]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
+                <div class="w-7 h-5 rounded border-2 border-[#1F1B38]"></div>
+              </div>
+            </div>
+
+            <div class="mt-5">
+              <div class="text-[10px] uppercase tracking-widest text-teal-200 font-bold">TRANSIT ID</div>
+              <div class="text-lg tracking-widest font-black text-[#1F1B38] mt-0.5">•••• •••• ••••</div>
+              <div class="text-xl font-extrabold text-[#1F1B38]">8924</div>
+            </div>
+
+            <div class="mt-3 flex items-end justify-between">
+              <div>
+                <div class="live-user-name font-extrabold text-base text-white tracking-wide">Mariam Fathy</div>
+                <div class="text-[10px] text-teal-100 font-semibold mt-1">EXP 09/28</div>
+              </div>
+              <div class="text-right">
+                <span class="live-user-email text-[10px] text-teal-200/90 font-medium">Passenger1@example.com</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary of Ticket Being Paid & Available Card Balance -->
+          <div class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-2.5" dir="rtl">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+              <span class="text-xs font-bold text-gray-500">الرصيد المتاح بالكارت:</span>
+              <span class="text-lg font-black text-[#00C5A1]"><span class="dynamic-card-balance">100.00</span> ج.م</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-500">إجمالي التذكرة المطلوب دفعها:</span>
+              <span class="text-base font-black text-[#1F1B38]"><span class="dynamic-total-fare">8.00</span> ج.م (<span class="dynamic-passenger-count">1</span> راكب)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two Action Buttons Below Masar Card: 1) Pay Now  2) شحن كارت مسار -->
+        <div class="space-y-2.5 pt-4">
+          <button onclick="selectPaymentMethod('wallet'); confirmAndPayNow()"
+            class="w-full py-3.5 px-5 rounded-2xl bg-[#231942] hover:bg-[#1a1233] text-white flex items-center justify-between shadow-lg transition cursor-pointer">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <span class="text-[#00E5B0] font-extrabold text-sm">تأكيد ودفع <span class="dynamic-total-fare">8.00</span> ج.م بكارت مسار</span>
+            <svg class="w-5 h-5 text-[#00E5B0]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+
+          <button onclick="showScreen('wallet')"
+            class="w-full py-3 px-5 rounded-2xl bg-[#99F6E4] hover:bg-[#7ef0da] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition cursor-pointer">
+            <span>⚡ شحن كارت مسار (إضافة رصيد)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 6: PAYMENT METHODS SCREEN
+    =========================================== -->
+    <section id="screen-payment" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-bold text-sm text-[#1F1B38]">Payment methods</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('qr')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Inner White Card Container -->
+      <div class="p-3.5 flex-1 flex flex-col justify-between overflow-y-auto">
+        <div class="bg-[#FAF9F5] rounded-3xl p-4 shadow-xs border border-gray-200/60 space-y-3.5">
+
+          <!-- Vehicle Info Header -->
+          <div class="flex items-center justify-between">
+            <div class="text-right" dir="rtl">
+              <div class="text-[10px] text-gray-500 font-bold">أجرة الخط</div>
+              <div class="text-lg font-extrabold text-[#00C5A1]"><span class="dynamic-base-fare">15</span> ج.م</div>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <div class="text-right" dir="rtl">
+                <h3 id="payment-vehicle-title" class="font-extrabold text-[#1F1B38] text-base">New Cairo Public Bus • B301</h3>
+                <span class="inline-block bg-[#231942] text-[#00E5B0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">تم التعرف</span>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center shadow-xs">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M8 15h.01M16 15h.01"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Driver Pill Banner (Shown only for Bus) -->
+          <div id="payment-driver-banner" class="hidden bg-[#231942] rounded-xl px-3 py-2 flex items-center justify-between text-white">
+            <div class="bg-white text-[#1F1B38] rounded-full px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1">
+              <span class="text-[#00C5A1]">(موثق ✓)</span>
+              <span>4.9</span>
+              <span class="text-amber-400">★</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs font-bold text-[#00C5A1]" dir="rtl">
+              <span id="payment-driver-name">الكابتن: Hassan Mahmoud</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+          </div>
+
+          <!-- Approved Fare & Total Tickets Counter Box (Moved from Home Screen to Replace the 3 Preset Buttons) -->
+          <div class="bg-[#EBF1EE] rounded-2xl p-4 flex items-center justify-between border border-teal-900/5 transition-all">
+            <!-- Left: Total Tickets Counter (+ / -) -->
+            <div class="flex flex-col items-center">
+              <span class="text-[11px] font-extrabold text-[#1F1B38] mb-1.5">عدد التذاكر</span>
+              <div class="bg-white rounded-full px-1.5 py-1 flex items-center gap-3.5 shadow-xs">
+                <button type="button" onclick="changePassengers(1)" class="w-8 h-8 rounded-full bg-[#00C5A1] text-white font-bold text-lg flex items-center justify-center hover:opacity-90 cursor-pointer">+</button>
+                <span class="dynamic-passenger-count font-extrabold text-sm text-[#1F1B38] min-w-[16px] text-center">1</span>
+                <button type="button" onclick="changePassengers(-1)" class="w-8 h-8 rounded-full bg-[#EEF2FF] text-[#1F1B38] font-bold text-lg flex items-center justify-center hover:bg-gray-200 cursor-pointer">−</button>
+              </div>
+            </div>
+
+            <!-- Right: Approved Fare & Route Summary -->
+            <div class="text-right" dir="rtl">
+              <div class="flex items-center gap-1 text-[#00B894] text-xs font-bold justify-start flex-wrap">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>الأجرة المعتمدة</span>
+                <span id="selected-fare-unit-badge" class="bg-[#CCFBF1] text-[#0F766E] text-[10px] px-2 py-0.5 rounded-full font-extrabold">8.00 ج.م / تذكرة</span>
+              </div>
+              <div class="mt-1 flex items-baseline gap-1 justify-start">
+                <span class="dynamic-total-fare text-3xl font-black text-[#00C5A1]">8.00</span>
+                <span class="text-sm font-bold text-[#00C5A1]">ج.م</span>
+              </div>
+              <div id="selected-trip-summary-badge" class="text-[10px] font-bold text-[#1F1B38]/80 mt-0.5">
+                Adly Mansour ↔ Cairo University
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Methods List -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between text-xs font-bold">
+              <button id="reset-pm-options-btn" onclick="resetPaymentMethodsList()" class="hidden text-[#009688] hover:underline cursor-pointer">↺ تغيير وسيلة الدفع (عرض الكل)</button>
+              <span class="text-[#1F1B38] mr-auto" dir="rtl">طريقة الدفع:</span>
+            </div>
+
+            <!-- Option 1: Credit National Card -->
+            <div onclick="selectPaymentMethod('card')" data-method="card"
+              class="pm-option-card bg-white rounded-2xl p-3.5 flex items-center justify-between border border-gray-100 shadow-2xs cursor-pointer transition">
+              <div class="flex items-center gap-3">
+                <div class="pm-radio-dot w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+                <div class="w-10 h-8 rounded-lg bg-[#99F6E4] text-[#1F1B38] flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-[#1F1B38] leading-tight">Credit / Debit<br/>Card</div>
+                  <div class="text-[11px] font-semibold text-[#00C5A1] mt-0.5">Visa / Mastercard / National Debit</div>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-[#1F1B38]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12l3-2 3 2 3-2 3 2V7a2 2 0 00-2-2h-2"/></svg>
+            </div>
+
+            <!-- Credit Card Entry Form (Shown ONLY when Credit/Debit Card is chosen for ticket payment) -->
+            <div id="payment-screen-credit-card-form" class="hidden bg-white rounded-2xl p-3.5 shadow-sm border-2 border-[#00C5A1] space-y-2.5">
+              <!-- Saved Payment Methods for quick 1-tap selection -->
+              <div id="payment-saved-cards-container" class="hidden space-y-1.5 border-b border-gray-100 pb-2" dir="rtl"></div>
+
+              <div class="text-right text-xs font-extrabold text-[#1F1B38] border-b border-gray-100 pb-1.5" dir="rtl">
+                💳 أدخل بيانات البطاقة البنكية للدفع:
+              </div>
+              <div>
+                <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">اسم حامل البطاقة *</label>
+                <input id="ticket-cc-holder" type="text" placeholder="Cardholder Name"
+                  class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+              </div>
+              <div>
+                <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">رقم البطاقة (16 رقم) *</label>
+                <input id="ticket-cc-number" type="text" maxlength="19" placeholder="4••• •••• •••• ••••"
+                  class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold tracking-wider text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">CVV *</label>
+                  <input id="ticket-cc-cvv" type="password" maxlength="4" placeholder="123"
+                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                </div>
+                <div>
+                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">السنة *</label>
+                  <input id="ticket-cc-year" type="number" min="2025" max="2035" placeholder="2028"
+                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                </div>
+                <div>
+                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">الشهر *</label>
+                  <input id="ticket-cc-month" type="number" min="1" max="12" placeholder="09"
+                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                </div>
+              </div>
+              <div id="ticket-cc-error" class="hidden text-[11px] font-bold text-red-600 text-right" dir="rtl"></div>
+            </div>
+
+            <!-- Option 2: Masar Card / Masar E-Wallet -->
+            <div onclick="selectPaymentMethod('wallet')" data-method="wallet"
+              class="pm-option-card bg-white rounded-2xl p-3.5 flex items-center justify-between border border-gray-100 ring-2 ring-[#00C5A1] shadow-2xs cursor-pointer transition">
+              <div class="flex items-center gap-3">
+                <div class="pm-radio-dot w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-[#1F1B38]"></div>
+                </div>
+                <div class="w-10 h-8 rounded-lg bg-[#99F6E4] text-[#1F1B38] flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 12h.01"/></svg>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-[#1F1B38] leading-tight">Masar Card / E-Wallet</div>
+                  <div class="text-[11px] font-bold text-[#00C5A1] mt-0.5">Available Balance: <span class="dynamic-wallet-balance">100.00</span> (رصيد متاح) EGP</div>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-[#1F1B38]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+
+            <!-- Virtual Masar Card Preview (Shown when Masar Card / E-Wallet is chosen on Payment screen) -->
+            <div id="payment-screen-masar-card-preview" class="hidden space-y-2.5 pt-1">
+              <div class="masar-card-gradient rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-[#99F6E4]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16"/></svg>
+                    </div>
+                    <div>
+                      <div class="font-extrabold text-xs text-[#1F1B38]">MASAR EGYPT</div>
+                      <div class="text-[9px] text-teal-100 font-semibold">كارت النقل الموحد • 8924</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[9px] text-teal-100">الرصيد المتاح</div>
+                    <div class="text-sm font-black text-[#88FCE8]"><span class="dynamic-card-balance">100.00</span> ج.م</div>
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between">
+                  <div class="live-user-name font-extrabold text-xs text-white">Mariam Fathy</div>
+                  <div class="text-[9px] text-teal-100">EXP 09/28</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Option 3: Cash -->
+            <div onclick="selectPaymentMethod('cash')" data-method="cash"
+              class="pm-option-card bg-white rounded-2xl p-3.5 flex items-center justify-between border border-gray-100 shadow-2xs cursor-pointer transition">
+              <div class="flex items-center gap-3">
+                <div class="pm-radio-dot w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+                <div class="w-10 h-8 rounded-lg bg-[#231942] text-[#00E5B0] font-bold text-xs flex items-center justify-center">
+                  كاش
+                </div>
+                <div class="font-bold text-sm text-[#1F1B38]">Cash</div>
+              </div>
+            </div>
+
+            <!-- Option 4: NFC -->
+            <div onclick="selectPaymentMethod('nfc')" data-method="nfc"
+              class="pm-option-card bg-white rounded-2xl p-3.5 flex items-center justify-between border border-gray-100 shadow-2xs cursor-pointer transition">
+              <div class="flex items-center gap-3">
+                <div class="pm-radio-dot w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+                <div class="w-10 h-8 rounded-lg bg-[#99F6E4] text-[#1F1B38] flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12a10 10 0 0110-10M2 12a6 6 0 016-6"/></svg>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-[#1F1B38]">NFC</div>
+                  <div class="text-[11px] font-semibold text-[#00C5A1]">Credit & Debit cards & Miza card</div>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-[#1F1B38]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/></svg>
+            </div>
+          </div>
+
+          <!-- Confirm & Pay CTA Button + شحن كارت مسار Button -->
+          <div class="space-y-2 pt-1">
+            <button id="confirm-pay-btn" onclick="confirmAndPayNow()"
+              class="w-full py-3.5 px-5 rounded-2xl bg-[#0F1E26] hover:bg-[#162c38] text-white flex items-center justify-between shadow-lg transition cursor-pointer">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span class="text-[#00C5A1] font-bold text-sm">تأكيد ودفع <span class="dynamic-total-fare">15.00</span> ج.م فوراً</span>
+              <svg class="w-5 h-5 text-[#00C5A1]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/></svg>
+            </button>
+
+            <button id="goto-recharge-card-btn" onclick="showScreen('wallet')"
+              class="w-full py-3 px-5 rounded-2xl bg-[#99F6E4] hover:bg-[#7ef0da] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer">
+              <span>⚡ شحن كارت مسار</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 7: MASAR EGYPT CARD / WALLET SCREEN
+    =========================================== -->
+    <section id="screen-wallet" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-bold text-sm text-[#1F1B38]">Masar Egypt- Card</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-4">
+        <!-- Virtual Masar Transit Card -->
+        <div class="masar-card-gradient rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#99F6E4]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16"/></svg>
+              </div>
+              <div>
+                <div class="font-extrabold text-sm text-[#1F1B38] tracking-wide">MASAR EGYPT</div>
+                <div class="text-[10px] text-teal-100 font-semibold">كارت النقل الموحد</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[#1F1B38]">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
+              <div class="w-7 h-5 rounded border-2 border-[#1F1B38]"></div>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <div class="text-[10px] uppercase tracking-widest text-teal-200 font-bold">TRANSIT ID</div>
+            <div class="text-lg tracking-widest font-black text-[#1F1B38] mt-0.5">•••• •••• ••••</div>
+            <div id="masar-card-last4" class="text-xl font-extrabold text-[#1F1B38]">8924</div>
+          </div>
+
+          <div class="mt-3 flex items-end justify-between">
+            <div>
+              <div class="live-user-name font-extrabold text-base text-white tracking-wide">Mariam Fathy</div>
+              <div id="masar-card-exp" class="text-[10px] text-teal-100 font-semibold mt-1">EXP 09/28</div>
+            </div>
+            <div class="text-right">
+              <span class="live-user-email text-[10px] text-teal-200/90 font-medium">Passenger1@example.com</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balance Row -->
+        <div class="flex items-center justify-between pt-1">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-[#1F1B38]">
+            <svg class="w-4 h-4 text-[#009688]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 12h.01"/></svg>
+            <span id="recharge-step-label">اختر وسيلة شحن كارت مسار:</span>
+          </div>
+
+          <div class="bg-white rounded-xl px-3 py-2 shadow-2xs border border-gray-100 text-right">
+            <div class="text-[10px] font-bold text-[#1F1B38]">Current Balance • الرصيد</div>
+            <div class="text-lg font-black text-[#00C5A1]"><span class="dynamic-card-balance">100.00</span> <span class="text-[10px] text-[#1F1B38] font-bold">EGP / ج.م</span></div>
+          </div>
+        </div>
+
+        <!-- Saved Payment Methods Box (Loaded live from Payment_Methods table) -->
+        <div id="wallet-saved-payment-methods" class="hidden bg-white rounded-2xl p-3 shadow-2xs border border-gray-100 space-y-2" dir="rtl"></div>
+
+        <!-- Button to show all options again when one is selected -->
+        <div id="change-recharge-method-bar" class="hidden flex items-center justify-between bg-[#EBF1EE] px-3 py-1.5 rounded-xl">
+          <button type="button" onclick="resetRechargeMethodSelection()"
+            class="text-xs font-extrabold text-[#009688] hover:underline flex items-center gap-1 cursor-pointer">
+            <span>↺ تغيير وسيلة الشحن (عرض كل الوسائل)</span>
+          </button>
+          <span class="text-[11px] font-bold text-[#1F1B38]" dir="rtl">الوسيلة المختارة:</span>
+        </div>
+
+        <!-- Step 1: Clean Method Selector List (Other options hide when 1 is chosen) -->
+        <div id="recharge-options-list" class="space-y-2">
+          <!-- Meeza Card -->
+          <div onclick="chooseRechargeMethod('meeza')" data-provider="meeza"
+            class="recharge-option-card bg-white rounded-2xl p-3 flex items-center justify-between border border-gray-100 cursor-pointer transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-[#00C5A1] text-white font-bold text-sm flex items-center justify-center">M</div>
+              <div>
+                <div class="font-bold text-sm text-[#1F1B38]">Meeza Card (كارت ميزة)</div>
+                <div class="text-[11px] text-gray-600">National Transit & Debit Card (بطاقة ميزة الوطنية)</div>
+              </div>
+            </div>
+            <div class="recharge-radio w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+          </div>
+
+          <!-- Fawry Pay -->
+          <div onclick="chooseRechargeMethod('fawry')" data-provider="fawry"
+            class="recharge-option-card bg-white rounded-2xl p-3 flex items-center justify-between border border-gray-100 cursor-pointer transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-[#231942] text-white font-bold text-sm flex items-center justify-center">F</div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-sm text-[#1F1B38]">Fawry Pay (فوري باي)</span>
+                  <span class="bg-[#CCFBF1] text-[#0F766E] text-[9px] font-bold px-2 py-0.5 rounded-full">Valid 24h</span>
+                </div>
+                <div class="text-[11px] text-gray-600">Pay via Fawry Reference Code (كود فوري)</div>
+              </div>
+            </div>
+            <div class="recharge-radio w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+          </div>
+
+          <!-- Bank Card -->
+          <div onclick="chooseRechargeMethod('bank')" data-provider="bank"
+            class="recharge-option-card bg-white rounded-2xl p-3 flex items-center justify-between border border-gray-100 cursor-pointer transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-[#00C5A1] text-white flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              </div>
+              <div>
+                <div class="font-bold text-sm text-[#1F1B38]">Bank Card (بطاقة بنكية)</div>
+                <div class="text-[11px] text-gray-600">Visa / Mastercard (NBE, Banque Misr, CIB, QNB)</div>
+              </div>
+            </div>
+            <div class="recharge-radio w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+          </div>
+
+          <!-- Smart Wallets -->
+          <div onclick="chooseRechargeMethod('wallet')" data-provider="wallet"
+            class="recharge-option-card bg-white rounded-2xl p-3 flex items-center justify-between border border-gray-100 cursor-pointer transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-[#231942] text-white flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              </div>
+              <div>
+                <div class="font-bold text-sm text-[#1F1B38]">Smart Wallets (المحافظ الإلكترونية)</div>
+                <div class="text-[11px] text-gray-600">Vodafone Cash, Orange Cash, Etisalat Cash</div>
+              </div>
+            </div>
+            <div class="recharge-radio w-5 h-5 rounded-full bg-[#99F6E4] flex items-center justify-center"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Dynamic Payment / Card Information Entry Form (Hidden until a method is clicked) -->
+        <form id="recharge-details-form" onsubmit="submitRechargeForm(event)"
+          class="hidden bg-white rounded-2xl p-4 shadow-md border-2 border-[#00C5A1] space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <span id="recharge-form-badge" class="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Meeza Card</span>
+            <h4 id="recharge-form-title" class="text-xs font-extrabold text-[#1F1B38]" dir="rtl">
+              2. أدخل بيانات الدفع ومبلغ الشحن:
+            </h4>
+          </div>
+
+          <div id="recharge-dynamic-fields" class="space-y-2.5">
+            <!-- Populated dynamically based on selected method -->
+          </div>
+
+          <div>
+            <label class="block text-right text-[11px] font-bold text-[#1F1B38] mb-1" dir="rtl">مبلغ الشحن (ج.م - EGP) *</label>
+            <input id="recharge-amount-input" type="number" min="5" step="5" value="50" required
+              class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-sm font-extrabold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+          </div>
+
+          <button id="recharge-submit-btn" type="submit"
+            class="w-full py-3 rounded-xl bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] font-extrabold text-xs flex items-center justify-center gap-2 shadow transition cursor-pointer">
+            <span>تأكيد الشحن وحفظ الوسيلة لحسابي</span>
+            <span>✓</span>
+          </button>
+
+          <div id="recharge-feedback-msg" class="text-[11px] text-center font-bold hidden"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 8: PAYMENT SUCCESS / TICKET RECEIPT
+    =========================================== -->
+    <section id="screen-receipt" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-2.5 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-bold text-sm text-[#1F1B38]">Masar Egypt- Card</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Receipt Body -->
+      <div class="px-4 py-3 flex-1 overflow-y-auto flex flex-col items-center space-y-3">
+        <!-- Check Icon with Teal Glow -->
+        <div class="w-14 h-14 rounded-full bg-[#231942] flex items-center justify-center shadow-[0_0_25px_#00C5A1]">
+          <div class="w-7 h-7 rounded-full bg-white text-[#231942] flex items-center justify-center font-black">✓</div>
+        </div>
+
+        <h2 id="receipt-main-heading" class="text-xl font-black text-[#1F1B38]" dir="rtl">تم دفع الأجرة بنجاح!</h2>
+
+        <div class="bg-[#CCFBF1] text-[#1F1B38] text-[11px] font-bold px-4 py-1 rounded-full flex items-center gap-1.5" dir="rtl">
+          <svg class="w-3.5 h-3.5 text-[#00C5A1]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>أظهر هذه الشاشة للسائق كإثبات فوري للدفع</span>
+        </div>
+
+        <!-- Live Verification Timestamp & Countdown Bar -->
+        <div class="w-full bg-[#CCFBF1]/90 rounded-full px-3 py-1.5 flex items-center justify-between text-[11px] font-bold">
+          <span class="bg-white text-[#1F1B38] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold" dir="rtl">
+            ◷ صالح لـ <span id="receipt-countdown-timer" class="font-mono">15:00</span> د
+          </span>
+          <div class="flex items-center gap-1.5 text-[#1F1B38]" dir="rtl">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#00C5A1] animate-pulse"></span>
+            <span>ختم التحقق المباشر:</span>
+            <span id="receipt-live-time" class="text-[#00C5A1] font-extrabold font-mono">04:04:15</span>
+          </div>
+        </div>
+
+        <!-- White Fare Box -->
+        <div class="w-full bg-[#F4F6FB] rounded-2xl p-4 text-center shadow-2xs border border-white">
+          <div class="flex items-center justify-center gap-2 text-xs font-bold mb-1" dir="rtl">
+            <span class="text-gray-600">إجمالي الأجرة</span>
+            <span id="receipt-payment-status-badge" class="bg-[#A7F3D0] text-[#065F46] text-[10px] px-2 py-0.5 rounded-full">مدفوع بالكامل</span>
+          </div>
+          <div class="text-3xl font-black text-[#00C5A1]" dir="rtl">
+            <span id="receipt-total-fare">15.00</span> <span class="text-base">ج.م</span>
+          </div>
+        </div>
+
+        <!-- Approved Route Card -->
+        <div class="w-full bg-[#D5F5F0] rounded-2xl px-4 py-3 flex items-center justify-between">
+          <div class="text-right flex-1 pr-2" dir="rtl">
+            <div class="text-[10px] text-gray-600 font-bold">خط السير المعتمد</div>
+            <div id="receipt-route-name" class="text-sm font-extrabold text-[#1F1B38]">عدلي منصور ↔ جامعة القاهرة</div>
+          </div>
+          <div class="w-9 h-9 rounded-full bg-[#80F5E2] text-[#1F1B38] flex items-center justify-center font-bold">
+            ⑂
+          </div>
+        </div>
+
+        <!-- Automatic Ticket QR Code Card for Driver Scan (Contains Price, Route, Status & Payment Method) -->
+        <div id="receipt-qr-box" class="w-full bg-white rounded-2xl p-3.5 shadow-sm border-2 border-[#00C5A1] flex flex-col items-center space-y-2" dir="rtl">
+          <div class="text-[11px] font-extrabold text-[#1F1B38] text-center">
+            📲 كود التحقق الفوري للسائق (QR التذكرة)
+          </div>
+
+          <div class="relative w-36 h-36 bg-[#F6F4EC] p-2 rounded-2xl border border-gray-200 flex items-center justify-center shadow-2xs">
+            <img id="receipt-ticket-qr-img"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MASAR-TICKET"
+              alt="Ticket QR Code" class="w-full h-full object-contain rounded-lg" />
+          </div>
+
+          <!-- Driver Action Hint (Paid vs Pending) -->
+          <div id="receipt-qr-driver-hint"
+            class="w-full text-center text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl bg-[#CCFBF1] text-[#0F766E]">
+            ✓ التذكرة مدفوعة — يمسح السائق الكود لتأكيد الركوب
+          </div>
+
+          <!-- Encoded QR Payload Summary (Price • Route • Status • Payment Method) -->
+          <div id="receipt-qr-encoded-summary"
+            class="w-full bg-[#F6F4EC] rounded-xl p-2 text-[10px] text-[#1F1B38] font-bold space-y-0.5 text-right border border-gray-200/70">
+          </div>
+        </div>
+
+        <!-- Reference & Remaining Wallet Summary -->
+        <div class="w-full space-y-1.5 pt-1 text-xs">
+          <div class="flex items-center justify-between">
+            <span id="receipt-ref-id" class="font-extrabold text-[#1F1B38]">#MSR-9842105</span>
+            <span class="text-gray-600 font-semibold" dir="rtl">رقم العملية (Ref ID):</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span id="receipt-payment-method" class="font-extrabold text-[#1F1B38]" dir="rtl">🪪 محفظة / كارت مسار</span>
+            <span class="text-gray-600 font-semibold" dir="rtl">وسيلة الدفع:</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-[#00C5A1]" dir="rtl"><span class="dynamic-wallet-balance">100.00</span> ج.م</span>
+            <span class="text-gray-600 font-semibold" dir="rtl">الرصيد المتبقي بالمحفظة:</span>
+          </div>
+        </div>
+
+        <!-- Bottom Action Buttons -->
+        <div class="w-full grid grid-cols-2 gap-2.5 pt-1">
+          <button onclick="alert('تم إرسال تقييم 5 نجوم للكابتن عماد عبد الله!')"
+            class="py-2.5 rounded-xl bg-[#88FCE8] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>تقييم الكابتن</span>
+            <span>★</span>
+          </button>
+          <button onclick="alert('تم نسخ رابط الإيصال للمشاركة!')"
+            class="py-2.5 rounded-xl bg-[#231942] text-[#00C5A1] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>مشاركة الإيصال</span>
+            <span>🔗</span>
+          </button>
+        </div>
+
+        <button onclick="showScreen('home')"
+          class="w-full py-3 rounded-full bg-[#88FCE8] hover:bg-[#6ef7df] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer">
+          <span>العودة للرئيسية وحجز رحلة أخرى</span>
+          <span>🏠</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 9: TICKETS HISTORY (الإيصالات السابقة)
+    =========================================== -->
+    <section id="screen-history" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-extrabold text-sm text-[#1F1B38]">الإيصالات والتذاكر السابقة</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tickets List Body -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-3">
+        <div class="bg-[#EBF1EE] rounded-2xl p-3 flex items-center justify-between" dir="rtl">
+          <div>
+            <div class="text-xs font-extrabold text-[#1F1B38]">سجل تذاكر: <span class="live-user-name">Mariam Fathy</span></div>
+            <div class="text-[11px] text-gray-600">جميع الإيصالات والتذاكر المحجوزة</div>
+          </div>
+          <button onclick="refreshTicketsFromDatabase()" class="px-2.5 py-1 rounded-xl bg-white text-[#009688] text-xs font-extrabold shadow-2xs cursor-pointer">
+            ↻ تحديث
+          </button>
+        </div>
+
+        <div id="user-tickets-history-list" class="space-y-2.5">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 10: SETTINGS & PERSONAL INFO (الإعدادات)
+    =========================================== -->
+    <section id="screen-settings" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+          <img src="assets/default-avatar.jpg" alt="User" class="w-full h-full object-cover" />
+        </button>
+        <div class="flex items-center gap-3">
+          <span class="font-extrabold text-sm text-[#1F1B38]">الإعدادات والبيانات الشخصية</span>
+          <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Body -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-4">
+        <!-- User Profile Banner -->
+        <div class="bg-[#231942] rounded-2xl p-4 text-white flex items-center justify-between shadow">
+          <div class="text-left">
+            <span id="settings-user-role-badge" class="bg-[#00C5A1] text-[#1F1B38] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Passenger</span>
+            <div class="text-[11px] text-teal-200 mt-1">User ID: #<span id="settings-user-id">18</span></div>
+          </div>
+          <div class="flex items-center gap-3 text-right" dir="rtl">
+            <div>
+              <div class="live-user-name font-extrabold text-base">Mariam Fathy</div>
+              <div class="live-user-email text-xs text-gray-300">Passenger1@example.com</div>
+            </div>
+            <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00C5A1]">
+              <img src="assets/default-avatar.jpg" alt="Avatar" class="w-full h-full object-cover" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Information Form (Only Full Name and Email) -->
+        <form onsubmit="saveUserProfileSettings(event)" class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3.5" dir="rtl">
+          <h3 class="font-extrabold text-xs text-[#1F1B38] border-b border-gray-100 pb-2">البيانات الشخصية:</h3>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">الاسم الكامل</label>
+            <input id="settings-input-name" type="text" required
+              class="w-full px-3 py-2.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">البريد الإلكتروني</label>
+            <input id="settings-input-email" type="email" required
+              class="w-full px-3 py-2.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+          </div>
+
+          <button id="settings-save-btn" type="submit"
+            class="w-full py-3 rounded-xl bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] font-extrabold text-xs flex items-center justify-center gap-2 shadow transition cursor-pointer">
+            <span>حفظ التعديلات</span>
+            <span>✓</span>
+          </button>
+
+          <div id="settings-feedback-msg" class="text-[11px] text-center font-bold hidden"></div>
+        </form>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js?v=23"></script>
+</body>
+</html>

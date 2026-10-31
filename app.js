@@ -242,6 +242,8 @@ async function loadInitialDatabase() {
     state.drivers = driversRes.results || [];
     state.tickets = ticketsRes.results || [];
     state.paymentMethods = pmRes.results || [];
+    state.tripsLoaded = true;
+    syncTripStatusesToDatabase();
 
     const savedUserId = Number(localStorage.getItem("masar_active_user_id") || 0);
     const matchedSavedUser = savedUserId
@@ -1241,10 +1243,11 @@ function syncCategoryHeaderAndStations(cat) {
     renderCustomStationMenus(routeStations);
   }
 
-  // Select first available trip for this route by default
-  const firstTrip = state.trips.find(t =>
-    t.route_id?.some(l => String(l.value) === String(routeId) || l.id === routeId)
-  );
+  // Select the next trip that hasn't finished yet (Scheduled / InTransit) for this route by default
+  const firstTrip = getBookableTripsForRoute(routeId)[0]?.trip;
+  if (!firstTrip) {
+    state.selectedTripId = null;
+  }
   if (firstTrip) {
     const dInfo = resolveDriverDetails(firstTrip.driver);
     state.selectedTripId = firstTrip.id;
@@ -1396,6 +1399,66 @@ function resolveDriverDetails(driverLinkArray) {
   };
 }
 
+// ===== Live Trip Status (Scheduled -> InTransit -> Completed) based on departure time + route duration =====
+const TRIP_MINUTES_PER_STATION = { 112: 2, 113: 3, 117: 4 }; // travel time between 2 stations (Metro / LRT / Bus)
+
+function getTripRouteId(trip) {
+  return Number(trip?.route_id?.[0]?.id || trip?.route_id?.[0]?.value || 0);
+}
+
+function getTripDurationMinutes(routeId) {
+  const routeObj = state.routes.find(r => Number(r.route_id || r.id) === Number(routeId)) || {};
+  const stationsCount = state.stations.filter(s =>
+    s.route_id?.some(l => Number(l.id) === Number(routeId) || String(l.value) === String(routeId))
+  ).length || 12;
+  const dwellMin = Number(routeObj.dwell_seconds || 30) / 60;
+  const perStation = TRIP_MINUTES_PER_STATION[routeId] || 3;
+  return Math.round((stationsCount - 1) * (perStation + dwellMin));
+}
+
+function computeTripLiveStatus(trip, nowMs = Date.now()) {
+  if (!trip?.departure) {
+    return { status: trip?.trip_status?.value || "Scheduled", depMs: null, arrMs: null };
+  }
+  const depMs = new Date(trip.departure).getTime();
+  const arrMs = depMs + getTripDurationMinutes(getTripRouteId(trip)) * 60000;
+  let status = "Scheduled";
+  if (nowMs >= arrMs) status = "Completed";
+  else if (nowMs >= depMs) status = "InTransit";
+  return { status, depMs, arrMs };
+}
+
+const tripStatusPatchesInFlight = new Set();
+
+// Keep trip_status in the Trips table in sync with the real time
+function syncTripStatusesToDatabase() {
+  const nowMs = Date.now();
+  state.trips.forEach(trip => {
+    const { status } = computeTripLiveStatus(trip, nowMs);
+    const dbStatus = trip.trip_status?.value || trip.trip_status || "Scheduled";
+    if (status === dbStatus) return;
+    const key = `${trip.id}:${status}`;
+    if (tripStatusPatchesInFlight.has(key)) return;
+    tripStatusPatchesInFlight.add(key);
+    baserowRowPatch(TABLES.TRIPS, trip.id, { trip_status: status })
+      .then(updated => {
+        trip.trip_status = updated?.trip_status || { value: status };
+      })
+      .catch(err => {
+        console.warn(`Could not update trip ${trip.id} status:`, err);
+        tripStatusPatchesInFlight.delete(key);
+      });
+  });
+}
+
+function getBookableTripsForRoute(routeId, nowMs = Date.now()) {
+  return state.trips
+    .filter(t => getTripRouteId(t) === Number(routeId))
+    .map(t => ({ trip: t, live: computeTripLiveStatus(t, nowMs) }))
+    .filter(x => x.live.status !== "Completed")
+    .sort((a, b) => (a.live.depMs || 0) - (b.live.depMs || 0));
+}
+
 function renderDatabaseRoutes() {
   const container = document.getElementById("routes-list-container");
   if (!container) return;
@@ -1415,20 +1478,27 @@ function renderDatabaseRoutes() {
   );
 
   const now = new Date();
-  const enrichedTrips = matchingTrips.map((t, index) => {
-    const depDate = t.departure ? new Date(t.departure) : new Date(now.getTime() + (index + 1) * 12 * 60000);
+  const nowMs = now.getTime();
+  // Only show trips that haven't finished yet (Scheduled or InTransit), ordered by departure time
+  const enrichedTrips = getBookableTripsForRoute(targetRouteId, nowMs).map(({ trip: t, live }) => {
+    const depDate = new Date(live.depMs || nowMs);
     const depTimeFormatted = depDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const depDateFormatted = depDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    const isToday = depDate.toDateString() === now.toDateString();
 
-    const minsFromNow = ((index * Number(headwayMins)) % 55) + 3;
+    const minsFromNow = Math.max(0, Math.round(((live.depMs || nowMs) - nowMs) / 60000));
+    const minsToArrival = Math.max(0, Math.round(((live.arrMs || nowMs) - nowMs) / 60000));
     const seatsAvail = Number(t.seats_available ?? 50);
     const driverInfo = resolveDriverDetails(t.driver);
 
     return {
       ...t,
+      liveStatus: live.status,
       depTimeFormatted,
       depDateFormatted,
+      isToday,
       minsFromNow,
+      minsToArrival,
       seatsAvail,
       driverInfo,
       routeDisplay: `${state.boardingStationName} ↔ ${state.alightingStationName}`
@@ -1436,13 +1506,15 @@ function renderDatabaseRoutes() {
   });
 
   const displayedTrips = state.filterNextHourOnly
-    ? enrichedTrips.slice(0, 4)
+    ? enrichedTrips.filter(t => t.liveStatus === "InTransit" || t.minsFromNow <= 60)
     : enrichedTrips;
 
   if (displayedTrips.length === 0) {
     container.innerHTML = `
-      <div class="bg-white rounded-2xl p-6 text-center text-gray-500 text-xs font-bold">
-        جاري تحميل الرحلات المتاحة...
+      <div class="bg-white rounded-2xl p-6 text-center text-gray-500 text-xs font-bold" dir="rtl">
+        ${state.tripsLoaded
+          ? (state.filterNextHourOnly ? "لا توجد رحلات خلال الساعة القادمة." : "لا توجد رحلات متاحة حالياً — كل رحلات اليوم انتهت.")
+          : "جاري تحميل الرحلات المتاحة..."}
       </div>
     `;
     return;
@@ -1479,6 +1551,9 @@ function renderDatabaseRoutes() {
               <span class="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                 Trip #${trip.trip_id}
               </span>
+              ${trip.liveStatus === 'InTransit'
+                ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md">🚍 في الطريق</span>`
+                : `<span class="bg-[#FEF3C7] text-[#B45309] text-[10px] font-extrabold px-2 py-0.5 rounded-md">🕒 مجدولة</span>`}
               <h4 class="font-extrabold text-[#1F1B38] text-[13px] leading-snug">${trip.routeDisplay}</h4>
             </div>
             <p class="text-[11px] font-bold text-[#009688] mt-0.5">${trip.vehicle_label}</p>
@@ -1531,7 +1606,11 @@ function renderDatabaseRoutes() {
             <svg class="w-3.5 h-3.5 text-[#00C5A1] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
             </svg>
-            <span>خلال ${trip.minsFromNow} د (الموعد: ${trip.depTimeFormatted})</span>
+            <span>${trip.liveStatus === 'InTransit'
+              ? `انطلقت ${trip.depTimeFormatted} • تصل خلال ${trip.minsToArrival} د`
+              : trip.minsFromNow < 60
+              ? `خلال ${trip.minsFromNow} د (الموعد: ${trip.depTimeFormatted})`
+              : `${trip.isToday ? 'اليوم' : trip.depDateFormatted} • الموعد: ${trip.depTimeFormatted}`}</span>
           </div>
         </div>
       </div>
@@ -2038,6 +2117,14 @@ async function confirmAndPayNow() {
   const btn = document.getElementById("confirm-pay-btn");
   const totalFare = parseFloat((state.baseFare * state.passengersCount).toFixed(2));
   const method = state.selectedPaymentMethod || "wallet";
+
+  // Block booking a trip that has already finished (or when no trip is available)
+  const selectedTripObj = state.trips.find(t => t.id === (state.selectedRoute?.trip_id || state.selectedTripId));
+  if (state.tripsLoaded && (!selectedTripObj || computeTripLiveStatus(selectedTripObj).status === "Completed")) {
+    alert("هذه الرحلة انتهت أو غير متاحة. يرجى اختيار رحلة قادمة من الصفحة الرئيسية.");
+    showScreen("home");
+    return;
+  }
 
   // 1. Validate Credit Card form if paying with Credit Card ("card")
   let ccData = null;
@@ -2733,6 +2820,30 @@ async function saveUserProfileSettings(e) {
       btn.innerHTML = `<span>حفظ التعديلات</span><span>✓</span>`;
     }
   }
+}
+
+// Every 30 seconds: refresh live trip statuses (Scheduled -> InTransit -> Completed), sync them to the database,
+// and drop finished trips from the list shown to the user
+setInterval(() => {
+  if (!state.tripsLoaded) return;
+  syncTripStatusesToDatabase();
+  const selected = state.trips.find(t => t.id === state.selectedTripId);
+  if (!selected || computeTripLiveStatus(selected).status === "Completed") {
+    syncCategoryHeaderAndStationsKeepStations();
+  }
+  renderDatabaseRoutes();
+}, 30 * 1000);
+
+// Re-pick the next valid trip without resetting the user's chosen stations
+function syncCategoryHeaderAndStationsKeepStations() {
+  const routeId = getRouteIdByCategory(state.selectedCategory);
+  const next = getBookableTripsForRoute(routeId)[0]?.trip;
+  if (!next) {
+    state.selectedTripId = null;
+    return;
+  }
+  const dInfo = resolveDriverDetails(next.driver);
+  chooseTripOnHome(next.id, routeId, calculateStationFare().unitFare, next.vehicle_label, dInfo.driverName, dInfo.vehicleNumber);
 }
 
 window.addEventListener("DOMContentLoaded", () => {

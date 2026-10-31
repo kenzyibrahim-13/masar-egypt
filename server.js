@@ -626,3 +626,49 @@ async function expireOutdatedTickets() {
 }
 expireOutdatedTickets();
 setInterval(expireOutdatedTickets, 30 * 1000);
+
+// Background sweep: move trips Scheduled -> InTransit -> Completed based on departure + route duration
+const TRIPS_SWEEP_TABLE_ID = 1278387;
+const STATIONS_SWEEP_TABLE_ID = 1278386;
+const TRIP_MINUTES_PER_STATION = { 112: 2, 113: 3, 117: 4 };
+
+async function updateTripStatuses() {
+  if (!BASEROW_TOKEN) return;
+  try {
+    const q = "?user_field_names=true&size=200";
+    const [tripsRes, stationsRes, routesRes] = await Promise.all([
+      baserowServerFetch(`/api/database/rows/table/${TRIPS_SWEEP_TABLE_ID}/${q}`),
+      baserowServerFetch(`/api/database/rows/table/${STATIONS_SWEEP_TABLE_ID}/${q}`),
+      baserowServerFetch(`/api/database/rows/table/${ROUTES_TABLE_ID}/${q}`)
+    ]);
+    if (!tripsRes.ok || !Array.isArray(tripsRes.data?.results)) return;
+    const stations = stationsRes.data?.results || [];
+    const routes = routesRes.data?.results || [];
+    const now = Date.now();
+
+    for (const trip of tripsRes.data.results) {
+      if (!trip.departure) continue;
+      const routeId = Number(trip.route_id?.[0]?.id || trip.route_id?.[0]?.value || 0);
+      const routeObj = routes.find(r => Number(r.route_id || r.id) === routeId) || {};
+      const stationsCount = stations.filter(s => s.route_id?.some(l => Number(l.id) === routeId)).length || 12;
+      const dwellMin = Number(routeObj.dwell_seconds || 30) / 60;
+      const durationMin = Math.round((stationsCount - 1) * ((TRIP_MINUTES_PER_STATION[routeId] || 3) + dwellMin));
+
+      const depMs = new Date(trip.departure).getTime();
+      const arrMs = depMs + durationMin * 60000;
+      const status = now >= arrMs ? "Completed" : now >= depMs ? "InTransit" : "Scheduled";
+      const current = trip.trip_status?.value || "Scheduled";
+      if (status === current) continue;
+
+      await baserowServerFetch(`/api/database/rows/table/${TRIPS_SWEEP_TABLE_ID}/${trip.id}/?user_field_names=true`, {
+        method: "PATCH",
+        body: JSON.stringify({ trip_status: status })
+      });
+      console.log(`Trip #${trip.trip_id || trip.id}: ${current} -> ${status}`);
+    }
+  } catch (err) {
+    console.warn("Trip status sweep failed:", err.message);
+  }
+}
+updateTripStatuses();
+setInterval(updateTripStatuses, 30 * 1000);

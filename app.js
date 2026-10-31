@@ -491,33 +491,49 @@ function renderSavedPaymentMethods() {
 function useSavedCardForRecharge(last4, expMonth, expYear, brand) {
   state.activeSavedRechargeCardKey = `${brand}_${last4}`;
   state.usingExistingSavedCardForRecharge = true;
+  state.selectedSavedRechargeCard = {
+    last4: String(last4),
+    expMonth: Number(expMonth || 9),
+    expYear: Number(expYear || 2028),
+    brand: brand || "Visa"
+  };
 
   const providerKey = brand === "Meeza" ? "meeza" : "bank";
-  selectRechargeMethod(providerKey);
+  chooseRechargeMethod(providerKey);
 
-  const prefix = brand === "Mastercard" ? "5200 0000 0000 " : brand === "Meeza" ? "5078 0000 0000 " : "4111 1111 1111 ";
-  const holderInput = document.getElementById("pm-input-holder");
-  const numInput = document.getElementById("pm-input-cardnum");
-  const monthInput = document.getElementById("pm-input-month");
-  const yearInput = document.getElementById("pm-input-year");
-  const cvvInput = document.getElementById("pm-input-cvv");
+  // Hide the 4 generic method cards so the Recharge Amount form is immediately visible right below the saved card
+  const optionsList = document.getElementById("recharge-options-list");
+  if (optionsList) optionsList.classList.add("hidden");
 
-  if (holderInput) holderInput.value = state.currentUser?.Full_Name || "Passenger";
-  if (numInput) numInput.value = `${prefix}${last4}`;
-  if (monthInput) monthInput.value = String(expMonth || 9);
-  if (yearInput) yearInput.value = String(expYear || 2028);
-  if (cvvInput) cvvInput.value = "123";
+  // Hide manual card input fields because the user is using an already-saved card
+  const dynFields = document.getElementById("recharge-dynamic-fields");
+  if (dynFields) {
+    dynFields.innerHTML = `
+      <div class="bg-[#CCFBF1]/70 border border-[#00C5A1] rounded-xl px-3 py-2 text-right text-xs font-extrabold text-[#0F766E]" dir="rtl">
+        ✓ الشحن المباشر باستخدام بطاقتك المحفوظة: <span dir="ltr">${brand} •••• ${last4}</span>
+      </div>
+    `;
+  }
+
+  const badge = document.getElementById("recharge-form-badge");
+  if (badge) badge.textContent = `${brand} •••• ${last4}`;
 
   const title = document.getElementById("recharge-form-title");
   if (title) {
-    title.innerHTML = `<span class="text-[#009688]">✓ تم اختيار بطاقتك المحفوظة (${brand} •••• ${last4}) — حدد المبلغ واضغط تأكيد الشحن:</span>`;
+    title.innerHTML = `<span class="text-[#1F1B38]">حدد مبلغ الشحن واضغط تأكيد:</span>`;
+  }
+
+  const submitBtn = document.getElementById("recharge-submit-btn");
+  if (submitBtn) {
+    submitBtn.innerHTML = `<span>تأكيد شحن كارت مسار الآن</span><span>✓</span>`;
   }
 
   renderSavedPaymentMethods();
 
   const formEl = document.getElementById("recharge-details-form");
   if (formEl) {
-    formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    formEl.classList.remove("hidden");
+    formEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 }
 
@@ -2116,9 +2132,16 @@ function chooseRechargeMethod(providerKey) {
   renderRechargeFormFields(providerKey);
 }
 
-// Show all 5 recharge options again and hide the entry form
+// Show all recharge options again and hide the entry form
 function resetRechargeMethodSelection() {
   state.selectedRechargeMethod = null;
+  state.activeSavedRechargeCardKey = null;
+  state.usingExistingSavedCardForRecharge = false;
+  state.selectedSavedRechargeCard = null;
+
+  const optionsList = document.getElementById("recharge-options-list");
+  if (optionsList) optionsList.classList.remove("hidden");
+
   document.querySelectorAll(".recharge-option-card").forEach(card => {
     const radio = card.querySelector(".recharge-radio");
     card.classList.remove("hidden", "bg-[#CCFBF1]", "ring-1", "ring-[#00C5A1]");
@@ -2133,6 +2156,7 @@ function resetRechargeMethodSelection() {
   const formEl = document.getElementById("recharge-details-form");
   if (changeBar) changeBar.classList.add("hidden");
   if (formEl) formEl.classList.add("hidden");
+  renderSavedPaymentMethods();
 }
 
 // Step 2: Render specific input fields for the chosen payment method
@@ -2236,7 +2260,18 @@ async function submitRechargeForm(e) {
   let expMonth = 9;
   let expYear = 2028;
 
-  if (providerKey === "meeza" || providerKey === "bank") {
+  if (state.usingExistingSavedCardForRecharge && state.selectedSavedRechargeCard) {
+    brandLabel = state.selectedSavedRechargeCard.brand || "Visa";
+    providerLabel = brandLabel === "Meeza" ? "Meeza Card" : "Bank Card";
+    last4 = state.selectedSavedRechargeCard.last4 || "1234";
+    expMonth = state.selectedSavedRechargeCard.expMonth || 9;
+    expYear = state.selectedSavedRechargeCard.expYear || 2028;
+
+    const last4El = document.getElementById("masar-card-last4");
+    const expEl = document.getElementById("masar-card-exp");
+    if (last4El && String(last4).length === 4) last4El.textContent = last4;
+    if (expEl) expEl.textContent = `EXP ${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`;
+  } else if (providerKey === "meeza" || providerKey === "bank") {
     const rawNum = (document.getElementById("pm-input-cardnum")?.value || "").replace(/\s+/g, "");
     providerLabel = providerKey === "meeza" ? "Meeza Card" : "Bank Card";
     brandLabel = providerKey === "meeza" ? "Meeza" : (rawNum.startsWith("5") ? "Mastercard" : "Visa");

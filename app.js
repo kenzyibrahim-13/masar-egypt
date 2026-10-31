@@ -685,9 +685,52 @@ async function refreshTicketsFromDatabase() {
   }
 }
 
+const expiredPatchedTicketIds = new Set();
+
+async function ensureTicketExpiredInDatabase(ticketOrId) {
+  const numericId = typeof ticketOrId === "object"
+    ? Number(ticketOrId?.ticket_id || ticketOrId?.id)
+    : Number(ticketOrId);
+  if (!numericId || isNaN(numericId)) return;
+
+  const ticketObj = typeof ticketOrId === "object" && ticketOrId !== null
+    ? ticketOrId
+    : state.tickets.find(t => Number(t.ticket_id || t.id) === numericId);
+
+  const rowId = ticketObj?.id || numericId;
+  const currentTStatus = ticketObj?.ticket_status?.value || ticketObj?.ticket_status || "";
+
+  if (ticketObj) {
+    ticketObj.ticket_status = { id: 0, value: "Expired" };
+  }
+
+  if (currentTStatus === "Expired" || expiredPatchedTicketIds.has(rowId)) {
+    return;
+  }
+  expiredPatchedTicketIds.add(rowId);
+
+  try {
+    await baserowRowPatch(TABLES.TICKETS, rowId, {
+      ticket_status: "Expired"
+    });
+    renderTicketsHistory();
+  } catch (err) {
+    console.warn("Could not patch expired ticket status in database:", err);
+  }
+}
+
 function resolveTicketLiveStatus(ticket) {
   const pStatus = ticket?.payment_status?.value || ticket?.payment_status || "Paid";
-  const tStatus = ticket?.ticket_status?.value || ticket?.ticket_status || "Active";
+  let tStatus = ticket?.ticket_status?.value || ticket?.ticket_status || "Active";
+
+  // Automatically detect if the 15-minute validity countdown (valid_until) has ended
+  if (tStatus !== "Used" && tStatus !== "Failed" && pStatus !== "Failed" && ticket?.valid_until) {
+    const validUntilMs = new Date(ticket.valid_until).getTime();
+    if (!isNaN(validUntilMs) && validUntilMs <= Date.now()) {
+      tStatus = "Expired";
+      ensureTicketExpiredInDatabase(ticket);
+    }
+  }
 
   if (pStatus === "Failed" || tStatus === "Failed") {
     return {
@@ -701,8 +744,8 @@ function resolveTicketLiveStatus(ticket) {
     return {
       effectiveStatus: "Expired",
       isPending: false,
-      badgeClass: "bg-gray-200 text-gray-700",
-      badgeLabel: "منتهية الصلاحية (Expired)"
+      badgeClass: "bg-red-100 text-red-700",
+      badgeLabel: "غير صالحة / منتهية الصلاحية (Expired)"
     };
   }
   if (tStatus === "Used") {
@@ -732,9 +775,37 @@ function resolveTicketLiveStatus(ticket) {
   };
 }
 
+function handleReceiptTicketCountdownExpired() {
+  const refText = document.getElementById("receipt-ref-id")?.textContent || "";
+  const matchId = refText.match(/#MSR-(\d+)/);
+  const openTicketId = state.activeReceiptTicketId || (matchId ? Number(matchId[1]) : null);
+
+  if (openTicketId) {
+    ensureTicketExpiredInDatabase(openTicketId);
+  }
+
+  updateReceiptStatusUI("Expired", "⌛ غير صالحة / منتهية الصلاحية (Expired)");
+
+  const currentRouteText = document.getElementById("receipt-route-name")?.textContent?.trim() || "عدلي منصور ↔ جامعة القاهرة";
+  const currentPmText = document.getElementById("receipt-payment-method")?.textContent?.trim() || "🪪 محفظة / كارت مسار";
+  const currentFare = parseFloat(document.getElementById("receipt-total-fare")?.textContent || 10).toFixed(2);
+
+  generateTicketQRCode({
+    ticketId: openTicketId || "9842105",
+    fare: currentFare,
+    route: currentRouteText,
+    status: "Expired",
+    paymentMethod: currentPmText
+  });
+
+  renderTicketsHistory();
+}
+
 function startReceiptLiveCountdown(resetTo15Mins = false) {
-  if (resetTo15Mins || state.receiptCountdownSeconds <= 0) {
+  if (resetTo15Mins) {
     state.receiptCountdownSeconds = 15 * 60;
+    state.receiptValidUntilMs = Date.now() + 15 * 60 * 1000;
+    state.receiptExpiredHandled = false;
   }
 
   if (state.receiptIntervalId) {
@@ -749,16 +820,46 @@ function startReceiptLiveCountdown(resetTo15Mins = false) {
       timeEl.textContent = now.toLocaleTimeString("en-GB", { hour12: false });
     }
 
-    // 2. Update 15-minute countdown timer (صالح لـ MM:SS د)
-    const countdownEl = document.getElementById("receipt-countdown-timer");
-    if (countdownEl) {
-      const mins = Math.floor(state.receiptCountdownSeconds / 60);
-      const secs = state.receiptCountdownSeconds % 60;
-      countdownEl.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    // 2. Sync remaining countdown seconds from valid_until timestamp if present
+    if (state.receiptValidUntilMs) {
+      state.receiptCountdownSeconds = Math.max(0, Math.ceil((state.receiptValidUntilMs - Date.now()) / 1000));
     }
 
+    const countdownEl = document.getElementById("receipt-countdown-timer");
+    const pillEl = document.getElementById("receipt-countdown-pill");
+    const prefixEl = document.getElementById("receipt-countdown-prefix");
+    const suffixEl = document.getElementById("receipt-countdown-suffix");
+
     if (state.receiptCountdownSeconds > 0) {
-      state.receiptCountdownSeconds -= 1;
+      const mins = Math.floor(state.receiptCountdownSeconds / 60);
+      const secs = state.receiptCountdownSeconds % 60;
+      if (countdownEl) {
+        countdownEl.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+      if (pillEl) {
+        pillEl.className = "bg-white text-[#1F1B38] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold";
+      }
+      if (prefixEl) prefixEl.textContent = "◷ صالح لـ";
+      if (suffixEl) suffixEl.textContent = "د";
+
+      if (!state.receiptValidUntilMs) {
+        state.receiptCountdownSeconds -= 1;
+      }
+    } else {
+      // Countdown has ended -> Ticket is now Expired / Invalid!
+      if (countdownEl) {
+        countdownEl.textContent = "00:00";
+      }
+      if (pillEl) {
+        pillEl.className = "bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold";
+      }
+      if (prefixEl) prefixEl.textContent = "⌛ انتهت الصلاحية (";
+      if (suffixEl) suffixEl.textContent = ") — غير صالحة";
+
+      if (!state.receiptExpiredHandled) {
+        state.receiptExpiredHandled = true;
+        handleReceiptTicketCountdownExpired();
+      }
     }
   };
 
@@ -1778,15 +1879,20 @@ function resetPaymentMethodsList() {
 function updateReceiptStatusUI(paymentStatus, customLabel = null) {
   const badgeEl = document.getElementById("receipt-payment-status-badge");
   const headingEl = document.getElementById("receipt-main-heading");
+  const topCircleEl = document.getElementById("receipt-top-icon-circle");
+  const topSymbolEl = document.getElementById("receipt-top-icon-symbol");
+  const subBannerEl = document.getElementById("receipt-proof-subbanner");
+  const subBannerTextEl = document.getElementById("receipt-proof-subbanner-text");
   const isPending = paymentStatus === "Pending";
+  const isInvalidOrExpired = paymentStatus === "Expired" || paymentStatus === "Failed";
 
   if (badgeEl) {
     if (paymentStatus === "Failed") {
       badgeEl.textContent = customLabel || "✕ فشل الدفع / ملغاة (Failed)";
       badgeEl.className = "bg-red-100 text-red-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full";
     } else if (paymentStatus === "Expired") {
-      badgeEl.textContent = customLabel || "⌛ منتهية الصلاحية (Expired)";
-      badgeEl.className = "bg-gray-200 text-gray-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full";
+      badgeEl.textContent = customLabel || "⌛ غير صالحة / منتهية الصلاحية (Expired)";
+      badgeEl.className = "bg-red-100 text-red-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full";
     } else if (paymentStatus === "Used") {
       badgeEl.textContent = customLabel || "✓ تم استخدام التذكرة (Used)";
       badgeEl.className = "bg-blue-100 text-blue-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full";
@@ -1805,8 +1911,37 @@ function updateReceiptStatusUI(paymentStatus, customLabel = null) {
       : paymentStatus === "Failed"
       ? "التذكرة غير صالحة (Failed)"
       : paymentStatus === "Expired"
-      ? "انتهت صلاحية التذكرة (Expired)"
+      ? "التذكرة غير صالحة — انتهت الصلاحية (Expired)"
       : "تم إصدار التذكرة بنجاح";
+  }
+
+  if (topCircleEl && topSymbolEl) {
+    if (isInvalidOrExpired) {
+      topCircleEl.className = "w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-[0_0_25px_#EF4444]";
+      topSymbolEl.className = "w-7 h-7 rounded-full bg-white text-red-600 flex items-center justify-center font-black";
+      topSymbolEl.textContent = "✕";
+    } else if (isPending) {
+      topCircleEl.className = "w-14 h-14 rounded-full bg-[#B45309] flex items-center justify-center shadow-[0_0_25px_#F59E0B]";
+      topSymbolEl.className = "w-7 h-7 rounded-full bg-white text-[#B45309] flex items-center justify-center font-black";
+      topSymbolEl.textContent = "⏳";
+    } else {
+      topCircleEl.className = "w-14 h-14 rounded-full bg-[#231942] flex items-center justify-center shadow-[0_0_25px_#00C5A1]";
+      topSymbolEl.className = "w-7 h-7 rounded-full bg-white text-[#231942] flex items-center justify-center font-black";
+      topSymbolEl.textContent = "✓";
+    }
+  }
+
+  if (subBannerEl && subBannerTextEl) {
+    if (paymentStatus === "Expired") {
+      subBannerEl.className = "bg-red-100 text-red-700 text-[11px] font-extrabold px-4 py-1 rounded-full flex items-center gap-1.5";
+      subBannerTextEl.textContent = "⚠️ انتهت مهلة الـ 15 دقيقة — هذه التذكرة غير صالحة للركوب";
+    } else if (paymentStatus === "Failed") {
+      subBannerEl.className = "bg-red-100 text-red-700 text-[11px] font-extrabold px-4 py-1 rounded-full flex items-center gap-1.5";
+      subBannerTextEl.textContent = "⚠️ هذه التذكرة ملغاة وغير صالحة للركوب";
+    } else {
+      subBannerEl.className = "bg-[#CCFBF1] text-[#1F1B38] text-[11px] font-bold px-4 py-1 rounded-full flex items-center gap-1.5";
+      subBannerTextEl.textContent = "أظهر هذه الشاشة للسائق كإثبات فوري للدفع";
+    }
   }
 }
 
@@ -1825,6 +1960,10 @@ function generateTicketQRCode({ ticketId, fare, route, status, paymentMethod }) 
 
   const driverActionText = isPending
     ? "COLLECT PAYMENT FIRST & CHANGE TICKET STATUS TO PAID/ACTIVE"
+    : normStatus === "Expired"
+    ? "TICKET EXPIRED / INVALID - DO NOT ALLOW BOARDING"
+    : normStatus === "Failed"
+    ? "TICKET FAILED / INVALID - DO NOT ALLOW BOARDING"
     : normStatus === "Paid" || normStatus === "Active"
     ? "ALREADY PAID - ALLOW BOARDING & MARK TICKET USED"
     : `TICKET STATUS: ${normStatus.toUpperCase()}`;
@@ -1834,7 +1973,7 @@ function generateTicketQRCode({ ticketId, fare, route, status, paymentMethod }) 
     `Ref: #MSR-${ticketId || "9842105"}`,
     `Price: ${formattedFare}`,
     `Route: ${cleanRoute}`,
-    `Status: ${normStatus.toUpperCase()}`,
+    `Status: ${normStatus === "Expired" ? "EXPIRED (INVALID)" : normStatus.toUpperCase()}`,
     `Payment Method: ${cleanMethod}`,
     `Driver Action: ${driverActionText}`
   ].join(" | ");
@@ -1846,7 +1985,7 @@ function generateTicketQRCode({ ticketId, fare, route, status, paymentMethod }) 
   if (qrBoxEl) {
     qrBoxEl.className = isPending
       ? "w-full bg-white rounded-2xl p-3.5 shadow-sm border-2 border-[#F59E0B] flex flex-col items-center space-y-2"
-      : normStatus === "Failed"
+      : normStatus === "Failed" || normStatus === "Expired"
       ? "w-full bg-white rounded-2xl p-3.5 shadow-sm border-2 border-red-400 flex flex-col items-center space-y-2"
       : "w-full bg-white rounded-2xl p-3.5 shadow-sm border-2 border-[#00C5A1] flex flex-col items-center space-y-2";
   }
@@ -1859,8 +1998,8 @@ function generateTicketQRCode({ ticketId, fare, route, status, paymentMethod }) 
       driverHintEl.className = "w-full text-center text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl bg-red-100 text-red-700";
       driverHintEl.textContent = "✕ تذكرة ملغاة / فشل الدفع — غير مسموح بالركوب";
     } else if (normStatus === "Expired") {
-      driverHintEl.className = "w-full text-center text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl bg-gray-200 text-gray-700";
-      driverHintEl.textContent = "⌛ تذكرة منتهية الصلاحية (Expired)";
+      driverHintEl.className = "w-full text-center text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl bg-red-100 text-red-700";
+      driverHintEl.textContent = "⌛ تذكرة غير صالحة (انتهت الصلاحية - Expired) — غير مسموح بالركوب";
     } else if (normStatus === "Used") {
       driverHintEl.className = "w-full text-center text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl bg-blue-100 text-blue-800";
       driverHintEl.textContent = "✓ تم مسح التذكرة وتأكيد الركوب مسبقاً (Used)";
@@ -1876,14 +2015,19 @@ function generateTicketQRCode({ ticketId, fare, route, status, paymentMethod }) 
       : normStatus === "Used"
       ? "تم الاستخدام (Used)"
       : normStatus === "Expired"
-      ? "منتهية الصلاحية (Expired)"
+      ? "غير صالحة / منتهية الصلاحية (Expired)"
       : normStatus === "Failed"
       ? "ملغاة / فشل (Failed)"
       : "مدفوعة (Paid)";
+    const statusColorClass = isPending
+      ? "text-[#B45309]"
+      : normStatus === "Expired" || normStatus === "Failed"
+      ? "text-red-600"
+      : "text-[#0F766E]";
     summaryEl.innerHTML = `
       <div class="flex items-center justify-between"><span>السعر (Price):</span><span class="font-extrabold text-[#009688]">${Number(fare || 0).toFixed(2)} ج.م</span></div>
       <div class="flex items-center justify-between"><span>المسار (Route):</span><span class="font-extrabold">${cleanRoute}</span></div>
-      <div class="flex items-center justify-between"><span>الحالة (Status):</span><span class="font-extrabold ${isPending ? 'text-[#B45309]' : 'text-[#0F766E]'}">${statusTextAr}</span></div>
+      <div class="flex items-center justify-between"><span>الحالة (Status):</span><span class="font-extrabold ${statusColorClass}">${statusTextAr}</span></div>
       <div class="flex items-center justify-between"><span>طريقة الدفع (Method):</span><span class="font-extrabold">${cleanMethod}</span></div>
     `;
   }
@@ -2098,7 +2242,10 @@ async function confirmAndPayNow() {
     });
 
     updateFareDisplays();
+    state.activeReceiptTicketId = refIdNum;
+    state.receiptValidUntilMs = validUntil.getTime();
     state.receiptCountdownSeconds = 15 * 60;
+    state.receiptExpiredHandled = false;
     showScreen("receipt");
   } catch (err) {
     console.error("Payment error:", err);
@@ -2106,7 +2253,9 @@ async function confirmAndPayNow() {
     if (recTotalEl) {
       recTotalEl.textContent = totalFare.toFixed(2);
     }
+    state.receiptValidUntilMs = Date.now() + 15 * 60 * 1000;
     state.receiptCountdownSeconds = 15 * 60;
+    state.receiptExpiredHandled = false;
     showScreen("receipt");
   } finally {
     if (btn) {
@@ -2465,9 +2614,32 @@ function renderTicketsHistory() {
 }
 
 function openOldTicketReceipt(ticketId, fare, routeText, paymentType, paymentStatus = "Paid") {
-  showScreen("receipt");
+  const liveTicket = state.tickets.find(t => Number(t.ticket_id || t.id) === Number(ticketId));
+  state.activeReceiptTicketId = ticketId;
 
-  updateReceiptStatusUI(paymentStatus);
+  let effectiveStatus = paymentStatus;
+  if (liveTicket) {
+    const resolved = resolveTicketLiveStatus(liveTicket);
+    effectiveStatus = resolved.effectiveStatus;
+  }
+
+  if (effectiveStatus === "Expired" || effectiveStatus === "Failed") {
+    state.receiptValidUntilMs = Date.now() - 1000;
+    state.receiptCountdownSeconds = 0;
+    state.receiptExpiredHandled = false;
+  } else if (liveTicket?.valid_until) {
+    const validMs = new Date(liveTicket.valid_until).getTime();
+    state.receiptValidUntilMs = !isNaN(validMs) ? validMs : Date.now() + 15 * 60 * 1000;
+    state.receiptCountdownSeconds = Math.max(0, Math.ceil((state.receiptValidUntilMs - Date.now()) / 1000));
+    state.receiptExpiredHandled = false;
+    if (state.receiptCountdownSeconds <= 0) {
+      effectiveStatus = "Expired";
+    }
+  } else {
+    state.receiptValidUntilMs = Date.now() + 15 * 60 * 1000;
+    state.receiptCountdownSeconds = 15 * 60;
+    state.receiptExpiredHandled = false;
+  }
 
   const refEl = document.getElementById("receipt-ref-id");
   if (refEl) refEl.textContent = `#MSR-${ticketId}`;
@@ -2477,7 +2649,7 @@ function openOldTicketReceipt(ticketId, fare, routeText, paymentType, paymentSta
 
   const pmEl = document.getElementById("receipt-payment-method");
   if (pmEl) {
-    if (paymentStatus === "Pending") {
+    if (effectiveStatus === "Pending") {
       pmEl.textContent = paymentType === "Cash" ? "💵 نقداً (كاش - بانتظار السائق)" : "📲 الدفع اللاتلامسي (NFC - قيد الانتظار)";
     } else {
       pmEl.textContent = paymentType === "Cash" ? "💵 نقداً (كاش)" : "🪪 محفظة / كارت مسار أو بطاقة بنكية";
@@ -2489,17 +2661,21 @@ function openOldTicketReceipt(ticketId, fare, routeText, paymentType, paymentSta
     recTotalEl.textContent = Number(fare).toFixed(2);
   }
 
-  const pmLabel = paymentStatus === "Pending"
+  const pmLabel = effectiveStatus === "Pending"
     ? (paymentType === "Cash" ? "💵 نقداً (كاش - بانتظار السائق)" : "📲 الدفع اللاتلامسي (NFC - قيد الانتظار)")
     : (paymentType === "Cash" ? "💵 نقداً (كاش)" : "🪪 محفظة / كارت مسار أو بطاقة بنكية");
+
+  updateReceiptStatusUI(effectiveStatus);
 
   generateTicketQRCode({
     ticketId,
     fare,
     route: routeText,
-    status: paymentStatus,
+    status: effectiveStatus,
     paymentMethod: pmLabel
   });
+
+  showScreen("receipt");
 }
 
 function populateSettingsFields() {

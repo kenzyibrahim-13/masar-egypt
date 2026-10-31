@@ -1082,21 +1082,21 @@
       <!-- Receipt Body -->
       <div class="px-4 py-3 flex-1 overflow-y-auto flex flex-col items-center space-y-3">
         <!-- Check Icon with Teal Glow -->
-        <div class="w-14 h-14 rounded-full bg-[#231942] flex items-center justify-center shadow-[0_0_25px_#00C5A1]">
-          <div class="w-7 h-7 rounded-full bg-white text-[#231942] flex items-center justify-center font-black">✓</div>
+        <div id="receipt-top-icon-circle" class="w-14 h-14 rounded-full bg-[#231942] flex items-center justify-center shadow-[0_0_25px_#00C5A1]">
+          <div id="receipt-top-icon-symbol" class="w-7 h-7 rounded-full bg-white text-[#231942] flex items-center justify-center font-black">✓</div>
         </div>
 
         <h2 id="receipt-main-heading" class="text-xl font-black text-[#1F1B38]" dir="rtl">تم دفع الأجرة بنجاح!</h2>
 
-        <div class="bg-[#CCFBF1] text-[#1F1B38] text-[11px] font-bold px-4 py-1 rounded-full flex items-center gap-1.5" dir="rtl">
+        <div id="receipt-proof-subbanner" class="bg-[#CCFBF1] text-[#1F1B38] text-[11px] font-bold px-4 py-1 rounded-full flex items-center gap-1.5" dir="rtl">
           <svg class="w-3.5 h-3.5 text-[#00C5A1]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>أظهر هذه الشاشة للسائق كإثبات فوري للدفع</span>
+          <span id="receipt-proof-subbanner-text">أظهر هذه الشاشة للسائق كإثبات فوري للدفع</span>
         </div>
 
         <!-- Live Verification Timestamp & Countdown Bar -->
-        <div class="w-full bg-[#CCFBF1]/90 rounded-full px-3 py-1.5 flex items-center justify-between text-[11px] font-bold">
-          <span class="bg-white text-[#1F1B38] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold" dir="rtl">
-            ◷ صالح لـ <span id="receipt-countdown-timer" class="font-mono">15:00</span> د
+        <div id="receipt-countdown-bar" class="w-full bg-[#CCFBF1]/90 rounded-full px-3 py-1.5 flex items-center justify-between text-[11px] font-bold">
+          <span id="receipt-countdown-pill" class="bg-white text-[#1F1B38] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold" dir="rtl">
+            <span id="receipt-countdown-prefix">◷ صالح لـ</span> <span id="receipt-countdown-timer" class="font-mono">15:00</span> <span id="receipt-countdown-suffix">د</span>
           </span>
           <div class="flex items-center gap-1.5 text-[#1F1B38]" dir="rtl">
             <span class="w-2.5 h-2.5 rounded-full bg-[#00C5A1] animate-pulse"></span>
@@ -1296,6 +1296,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

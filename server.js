@@ -600,3 +600,29 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Masar Egypt Server running on http://localhost:${PORT}`);
 });
+
+// Background sweep: mark any ticket whose valid_until (15-minute countdown) has passed as "Expired" in the Tickets table
+async function expireOutdatedTickets() {
+  if (!BASEROW_TOKEN) return;
+  try {
+    const list = await baserowServerFetch(`/api/database/rows/table/${TICKETS_TABLE_ID}/?user_field_names=true&size=200`);
+    if (!list.ok || !Array.isArray(list.data?.results)) return;
+    const now = Date.now();
+    for (const t of list.data.results) {
+      const tStatus = t.ticket_status?.value || t.ticket_status || "";
+      const pStatus = t.payment_status?.value || t.payment_status || "";
+      if (["Expired", "Used", "Failed"].includes(tStatus) || pStatus === "Failed" || !t.valid_until) continue;
+      const validMs = new Date(t.valid_until).getTime();
+      if (isNaN(validMs) || validMs > now) continue;
+      await baserowServerFetch(`/api/database/rows/table/${TICKETS_TABLE_ID}/${t.id}/?user_field_names=true`, {
+        method: "PATCH",
+        body: JSON.stringify({ ticket_status: "Expired" })
+      });
+      console.log(`Ticket #${t.ticket_id || t.id} expired (valid_until passed).`);
+    }
+  } catch (err) {
+    console.warn("Ticket expiry sweep failed:", err.message);
+  }
+}
+expireOutdatedTickets();
+setInterval(expireOutdatedTickets, 30 * 1000);

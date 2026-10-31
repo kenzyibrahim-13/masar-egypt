@@ -408,11 +408,19 @@
           </svg>
         </div>
 
-        <!-- Primary CTA: Pay Now -->
-        <div class="px-3">
-          <button onclick="showScreen('payment')"
-            class="w-full py-3.5 rounded-2xl bg-[#231942] hover:bg-[#1a1233] text-white font-bold text-sm flex items-center justify-center shadow-[0_6px_0_#A3C6BE] active:translate-y-0.5 transition-all cursor-pointer">
+        <!-- Primary CTA Row: Choose Trip & Pay Now OR Scan Bus QR (Bus Only) -->
+        <div class="px-3 flex items-center gap-2.5" dir="rtl">
+          <button id="home-pay-now-btn" onclick="showScreen('payment')"
+            class="flex-1 py-3.5 px-4 rounded-2xl bg-[#231942] hover:bg-[#1a1233] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-[0_6px_0_#A3C6BE] active:translate-y-0.5 transition-all cursor-pointer">
             <span>ادفع الان</span>
+          </button>
+
+          <button id="home-bus-qr-pay-btn" onclick="openBusQrScanner()"
+            class="hidden flex-1 py-3.5 px-4 rounded-2xl bg-[#00C5A1] hover:bg-[#00b090] text-[#1F1B38] font-extrabold text-sm items-center justify-center gap-2 shadow-[0_6px_0_#1F1B38] active:translate-y-0.5 transition-all cursor-pointer">
+            <svg class="w-4 h-4 shrink-0 text-[#1F1B38]" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM19 19h2v2h-2zM15 19h2v2h-2zM19 15h2v2h-2z"/>
+            </svg>
+            <span>ادفع بال QR</span>
           </button>
         </div>
 
@@ -647,7 +655,7 @@
           <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
             <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
           </div>
-          <button onclick="showScreen('qr')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -1288,6 +1296,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>

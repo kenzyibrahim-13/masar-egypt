@@ -1173,7 +1173,26 @@ function syncCategoryHeaderAndStations(cat) {
     }
   }
 
+  // Show the QR Scan Payment button next to "ادفع الان" ONLY for Bus (hide for Metro & LRT)
+  const busQrPayBtn = document.getElementById("home-bus-qr-pay-btn");
+  if (busQrPayBtn) {
+    if (cat === "bus") {
+      busQrPayBtn.classList.remove("hidden");
+      busQrPayBtn.classList.add("flex");
+    } else {
+      busQrPayBtn.classList.add("hidden");
+      busQrPayBtn.classList.remove("flex");
+    }
+  }
+
   updateFareDisplays();
+}
+
+function openBusQrScanner() {
+  if (typeof switchQrScreenTab === "function") {
+    switchQrScreenTab("camera");
+  }
+  showScreen("qr");
 }
 
 function syncSelectedTripToDOM() {
@@ -1395,13 +1414,15 @@ function renderDatabaseRoutes() {
             <button disabled class="bg-gray-300 text-gray-600 text-[11px] font-bold px-3 py-1.5 rounded-lg cursor-not-allowed">
               غير متاح (مكتمل)
             </button>
+          ` : isSelected ? `
+            <button onclick="event.stopPropagation(); showScreen('payment')"
+              class="bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0">
+              <span>✓ الرحلة المختارة (ادفع الآن)</span>
+            </button>
           ` : `
-            <button onclick="event.stopPropagation(); selectTripAndPay(${trip.id}, ${targetRouteId}, ${routeFare}, '${trip.vehicle_label.replace(/'/g, "")}', '${trip.routeDisplay.replace(/'/g, "")}', '${trip.driverInfo.driverName.replace(/'/g, "")}', '${trip.driverInfo.vehicleNumber.replace(/'/g, "")}')"
+            <button onclick="event.stopPropagation(); chooseTripOnHome(${trip.id}, ${targetRouteId}, ${routeFare}, '${trip.vehicle_label.replace(/'/g, "")}', '${trip.driverInfo.driverName.replace(/'/g, "")}', '${trip.driverInfo.vehicleNumber.replace(/'/g, "")}')"
               class="bg-[#00C5A1] hover:bg-[#00b090] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM19 19h2v2h-2zM15 19h2v2h-2zM19 15h2v2h-2z"/>
-              </svg>
-              <span>ادفع بال QR</span>
+              <span>اختيار الرحلة</span>
             </button>
           `}
 
@@ -1440,7 +1461,7 @@ function chooseTripOnHome(tripId, routeId, fare, vehicleLabel, driverName, vehic
 
 function selectTripAndPay(tripId, routeId, fare, vehicleLabel, routeArName, driverName, vehicleNumber) {
   chooseTripOnHome(tripId, routeId, fare, vehicleLabel, driverName, vehicleNumber);
-  showScreen("qr");
+  showScreen("payment");
 }
 
 // Authentication (Works via /api/auth/* on Node.js server AND via bcryptjs + live database on GitHub Pages)

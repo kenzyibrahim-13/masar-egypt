@@ -466,10 +466,27 @@ const server = http.createServer(async (req, res) => {
           : "Visa";
 
         const uid = Array.isArray(body.user_id) ? body.user_id[0] : 18;
-        const curBal = getUserBalanceFromStore(uid) ?? 100.00;
+        const curBal = getUserBalanceFromStore(uid) ?? 0.00;
         const pmBase = body.provider_pm_id || `pm_${origProvider.replace(/\s+/g, "_").toLowerCase()}_${body.last4 || "0000"}`;
         if (!String(pmBase).includes("bal:")) {
           body.provider_pm_id = `${pmBase} | bal:${curBal.toFixed(2)}`;
+        }
+
+        // Prevent resaving an already-saved card (same user_id + last4 + brand)
+        if (req.method === "POST" && body.last4) {
+          const existingPmRes = await baserowServerFetch(
+            `/api/database/rows/table/${PAYMENT_METHODS_TABLE_ID}/?user_field_names=true&size=200`
+          );
+          if (existingPmRes.ok) {
+            const matchExisting = (existingPmRes.data?.results || []).find(pm =>
+              String(pm.last4) === String(body.last4) &&
+              String(pm.brand?.value || pm.brand || "Visa") === String(body.brand) &&
+              pm.user_id?.some(u => Number(u.id) === Number(uid) || Number(u.value) === Number(uid))
+            );
+            if (matchExisting) {
+              return sendJson(res, 200, matchExisting);
+            }
+          }
         }
       }
 

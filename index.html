@@ -749,34 +749,37 @@
               <!-- Saved Payment Methods for quick 1-tap selection -->
               <div id="payment-saved-cards-container" class="hidden space-y-1.5 border-b border-gray-100 pb-2" dir="rtl"></div>
 
-              <div class="text-right text-xs font-extrabold text-[#1F1B38] border-b border-gray-100 pb-1.5" dir="rtl">
-                💳 أدخل بيانات البطاقة البنكية للدفع:
-              </div>
-              <div>
-                <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">اسم حامل البطاقة *</label>
-                <input id="ticket-cc-holder" type="text" placeholder="Cardholder Name"
-                  class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
-              </div>
-              <div>
-                <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">رقم البطاقة (16 رقم) *</label>
-                <input id="ticket-cc-number" type="text" maxlength="19" placeholder="4••• •••• •••• ••••"
-                  class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold tracking-wider text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
-              </div>
-              <div class="grid grid-cols-3 gap-2">
-                <div>
-                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">CVV *</label>
-                  <input id="ticket-cc-cvv" type="password" maxlength="4" placeholder="123"
-                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+              <!-- Manual New Card Fields (Hidden automatically when a saved card is selected) -->
+              <div id="payment-new-card-manual-fields" class="space-y-2.5">
+                <div class="text-right text-xs font-extrabold text-[#1F1B38] border-b border-gray-100 pb-1.5" dir="rtl">
+                  💳 أدخل بيانات بطاقة بنكية جديدة للدفع:
                 </div>
                 <div>
-                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">السنة *</label>
-                  <input id="ticket-cc-year" type="number" min="2025" max="2035" placeholder="2028"
-                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">اسم حامل البطاقة *</label>
+                  <input id="ticket-cc-holder" type="text" placeholder="Cardholder Name"
+                    class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
                 </div>
                 <div>
-                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">الشهر *</label>
-                  <input id="ticket-cc-month" type="number" min="1" max="12" placeholder="09"
-                    class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                  <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">رقم البطاقة (16 رقم) *</label>
+                  <input id="ticket-cc-number" type="text" maxlength="19" placeholder="4••• •••• •••• ••••"
+                    class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-semibold tracking-wider text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div>
+                    <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">CVV *</label>
+                    <input id="ticket-cc-cvv" type="password" maxlength="4" placeholder="123"
+                      class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                  </div>
+                  <div>
+                    <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">السنة *</label>
+                    <input id="ticket-cc-year" type="number" min="2025" max="2035" placeholder="2028"
+                      class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                  </div>
+                  <div>
+                    <label class="block text-right text-[10px] font-bold text-[#1F1B38] mb-1" dir="rtl">الشهر *</label>
+                    <input id="ticket-cc-month" type="number" min="1" max="12" placeholder="09"
+                      class="w-full px-2 py-1.5 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-center text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+                  </div>
                 </div>
               </div>
               <div id="ticket-cc-error" class="hidden text-[11px] font-bold text-red-600 text-right" dir="rtl"></div>
@@ -1285,6 +1288,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>

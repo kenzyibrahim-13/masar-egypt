@@ -457,7 +457,15 @@ function renderSavedPaymentMethods() {
     } else {
       paymentCardsContainer.classList.remove("hidden");
       paymentCardsContainer.innerHTML = `
-        <div class="text-[10px] font-extrabold text-[#009688]">اختر من بطاقاتك المحفوظة للدفع بضغطة واحدة:</div>
+        <div class="flex items-center justify-between">
+          <div class="text-[10px] font-extrabold text-[#009688]">اختر من بطاقاتك المحفوظة للدفع بضغطة واحدة:</div>
+          ${state.selectedSavedTicketCard ? `
+            <button type="button" onclick="showNewCardEntryFormForTicket()"
+              class="text-[10px] font-extrabold text-[#231942] underline hover:text-[#009688] cursor-pointer">
+              + إدخال بطاقة جديدة
+            </button>
+          ` : ''}
+        </div>
         <div class="space-y-1">
           ${userPms.slice(-4).reverse().map(pm => {
             const brand = pm.brand?.value || pm.brand || "Visa";
@@ -516,26 +524,47 @@ function useSavedCardForRecharge(last4, expMonth, expYear, brand) {
 function useSavedCardForTicket(last4, expMonth, expYear, brand) {
   state.activeSavedTicketCardKey = `${brand}_${last4}`;
   state.usingExistingSavedCardForTicket = true;
+  state.selectedSavedTicketCard = {
+    holder: state.currentUser?.Full_Name || "Passenger",
+    last4: String(last4),
+    brand: brand || "Visa",
+    expMonth: Number(expMonth || 9),
+    expYear: Number(expYear || 2028)
+  };
 
-  const holderInput = document.getElementById("ticket-cc-holder");
-  const numInput = document.getElementById("ticket-cc-number");
-  const monthInput = document.getElementById("ticket-cc-month");
-  const yearInput = document.getElementById("ticket-cc-year");
-  const cvvInput = document.getElementById("ticket-cc-cvv");
-
-  const prefix = brand === "Mastercard" ? "5200 0000 0000 " : brand === "Meeza" ? "5078 0000 0000 " : "4111 1111 1111 ";
-  if (holderInput) holderInput.value = state.currentUser?.Full_Name || "Passenger";
-  if (numInput) numInput.value = `${prefix}${last4}`;
-  if (monthInput) monthInput.value = String(expMonth || 9);
-  if (yearInput) yearInput.value = String(expYear || 2028);
-  if (cvvInput) cvvInput.value = "123";
+  // Hide the manual "enter new card" fields so the user knows they are paying with their already-saved card
+  const manualFieldsEl = document.getElementById("payment-new-card-manual-fields");
+  if (manualFieldsEl) {
+    manualFieldsEl.classList.add("hidden");
+  }
 
   const errEl = document.getElementById("ticket-cc-error");
   if (errEl) {
-    errEl.textContent = `✓ تم اختيار البطاقة المحفوظة (${brand} •••• ${last4}) — اضغط على زر تأكيد ودفع بالأسفل لإصدار التذكرة فوراً.`;
+    errEl.textContent = `✓ سيتم الدفع مباشرة ببطاقتك المحفوظة (${brand} •••• ${last4}) بدون إعادة حفظها — اضغط تأكيد ودفع بالأسفل.`;
     errEl.className = "text-[11px] font-extrabold text-[#009688] text-right mt-1";
     errEl.classList.remove("hidden");
   }
+
+  renderSavedPaymentMethods();
+}
+
+function showNewCardEntryFormForTicket() {
+  state.activeSavedTicketCardKey = null;
+  state.usingExistingSavedCardForTicket = false;
+  state.selectedSavedTicketCard = null;
+
+  const manualFieldsEl = document.getElementById("payment-new-card-manual-fields");
+  if (manualFieldsEl) {
+    manualFieldsEl.classList.remove("hidden");
+  }
+
+  const numInput = document.getElementById("ticket-cc-number");
+  const cvvInput = document.getElementById("ticket-cc-cvv");
+  if (numInput) numInput.value = "";
+  if (cvvInput) cvvInput.value = "";
+
+  const errEl = document.getElementById("ticket-cc-error");
+  if (errEl) errEl.classList.add("hidden");
 
   renderSavedPaymentMethods();
 }
@@ -1831,35 +1860,42 @@ async function confirmAndPayNow() {
 
   // 1. Validate Credit Card form if paying with Credit Card ("card")
   let ccData = null;
+  let isUsingSavedCard = false;
   if (method === "card") {
-    const holder = document.getElementById("ticket-cc-holder")?.value.trim() || "";
-    const rawNum = (document.getElementById("ticket-cc-number")?.value || "").replace(/\s+/g, "");
-    const expMonth = parseInt(document.getElementById("ticket-cc-month")?.value || "", 10);
-    const expYear = parseInt(document.getElementById("ticket-cc-year")?.value || "", 10);
-    const cvv = (document.getElementById("ticket-cc-cvv")?.value || "").trim();
-    const errEl = document.getElementById("ticket-cc-error");
+    if (state.selectedSavedTicketCard && state.usingExistingSavedCardForTicket) {
+      ccData = { ...state.selectedSavedTicketCard };
+      isUsingSavedCard = true;
+    } else {
+      const holder = document.getElementById("ticket-cc-holder")?.value.trim() || "";
+      const rawNum = (document.getElementById("ticket-cc-number")?.value || "").replace(/\s+/g, "");
+      const expMonth = parseInt(document.getElementById("ticket-cc-month")?.value || "", 10);
+      const expYear = parseInt(document.getElementById("ticket-cc-year")?.value || "", 10);
+      const cvv = (document.getElementById("ticket-cc-cvv")?.value || "").trim();
+      const errEl = document.getElementById("ticket-cc-error");
 
-    if (!holder || rawNum.length < 12 || !expMonth || !expYear || cvv.length < 3) {
-      if (errEl) {
-        errEl.textContent = "⚠️ يرجى إدخال بيانات البطاقة البنكية بالكامل (الاسم، رقم البطاقة، تاريخ الانتهاء، ورمز CVV).";
-        errEl.classList.remove("hidden");
+      if (!holder || rawNum.length < 12 || !expMonth || !expYear || cvv.length < 3) {
+        if (errEl) {
+          errEl.textContent = "⚠️ يرجى اختيار بطاقة محفوظة أعلاه أو إدخال بيانات البطاقة البنكية بالكامل.";
+          errEl.className = "text-[11px] font-bold text-red-600 text-right";
+          errEl.classList.remove("hidden");
+        }
+        const ccForm = document.getElementById("payment-screen-credit-card-form");
+        if (ccForm) {
+          ccForm.classList.remove("hidden");
+          ccForm.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
       }
-      const ccForm = document.getElementById("payment-screen-credit-card-form");
-      if (ccForm) {
-        ccForm.classList.remove("hidden");
-        ccForm.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      return;
+      if (errEl) errEl.classList.add("hidden");
+
+      ccData = {
+        holder,
+        last4: rawNum.slice(-4),
+        brand: rawNum.startsWith("4") ? "Visa" : rawNum.startsWith("5") ? "Mastercard" : "Meeza",
+        expMonth: Math.min(12, Math.max(1, expMonth)),
+        expYear
+      };
     }
-    if (errEl) errEl.classList.add("hidden");
-
-    ccData = {
-      holder,
-      last4: rawNum.slice(-4),
-      brand: rawNum.startsWith("4") ? "Visa" : rawNum.startsWith("5") ? "Mastercard" : "Meeza",
-      expMonth: Math.min(12, Math.max(1, expMonth)),
-      expYear
-    };
   }
 
   // 2. Check Masar Card balance ONLY when paying with Masar Card ("wallet")
@@ -1883,17 +1919,16 @@ async function confirmAndPayNow() {
       await persistWalletBalance(nextBal);
     }
 
-    // If paid with Credit Card ("card"), save the card to PAYMENT_METHODS (1278389) only if it's not already saved for this user
-    if (method === "card" && ccData) {
+    // ONLY save to PAYMENT_METHODS (1278389) if the user typed a brand-new card that is NOT already in their saved cards
+    if (method === "card" && ccData && !isUsingSavedCard) {
       const uid = state.currentUser?.id || state.currentUser?.user_id || 18;
       const validBrand = ["Visa", "Mastercard", "Meeza"].includes(ccData.brand) ? ccData.brand : "Visa";
       const alreadyExists = (state.paymentMethods || []).some(pm =>
         String(pm.last4) === String(ccData.last4) &&
-        String(pm.brand?.value || pm.brand || "Visa") === validBrand &&
         pm.user_id?.some(u => Number(u.id) === Number(uid) || Number(u.value) === Number(uid))
       );
 
-      if (!alreadyExists && !state.usingExistingSavedCardForTicket) {
+      if (!alreadyExists) {
         try {
           const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
             method: "POST",
@@ -1916,7 +1951,6 @@ async function confirmAndPayNow() {
           console.warn("Could not save credit card metadata:", pmErr);
         }
       }
-      state.usingExistingSavedCardForTicket = false;
     }
 
     const pmNameMap = {

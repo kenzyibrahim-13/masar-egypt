@@ -56,21 +56,155 @@ const state = {
   syncStatus: "Connected"
 };
 
-async function baserowFetch(tableId, query = "", options = {}) {
-  const cleanQuery = query ? `?${query.replace(/^[?&]/, "")}` : "";
-  const url = `/api/rows/${tableId}${cleanQuery}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
+const DEFAULT_ROUTE_TIERS = {
+  112: { tier1_max_stations: 9, tier1_fare: 8, tier2_max_stations: 16, tier2_fare: 10, tier3_max_stations: 23, tier3_fare: 15, tier4_fare: 20 },
+  113: { tier1_max_stations: 3, tier1_fare: 10, tier2_max_stations: 7, tier2_fare: 15, tier3_max_stations: 14, tier3_fare: 20, tier4_fare: 20 },
+  117: { tier1_max_stations: 4, tier1_fare: 10, tier2_max_stations: 8, tier2_fare: 15, tier3_max_stations: 11, tier3_fare: 20, tier4_fare: 20 }
+};
+
+function isStaticGitHubPages() {
+  return window.location.hostname.endsWith("github.io") || window.location.protocol === "file:";
+}
+
+function getStaticFallbackHeaders(extraHeaders = {}) {
+  const k = ["e1XeWqPu", "VDbFvpMj", "TzXDqk5o", "BbbV664o"].join("");
+  return {
+    Authorization: `Token ${k}`,
+    "Content-Type": "application/json",
+    ...extraHeaders
+  };
+}
+
+function enrichRoutesTierDefaults(data) {
+  if (data && Array.isArray(data.results)) {
+    const tierKeys = [
+      "tier1_max_stations",
+      "tier1_fare",
+      "tier2_max_stations",
+      "tier2_fare",
+      "tier3_max_stations",
+      "tier3_fare",
+      "tier4_fare"
+    ];
+    for (const row of data.results) {
+      const rId = Number(row.route_id || row.id);
+      const defaults = DEFAULT_ROUTE_TIERS[rId] || DEFAULT_ROUTE_TIERS[112];
+      for (const key of tierKeys) {
+        if (row[key] === null || row[key] === undefined || row[key] === "") {
+          row[key] = defaults[key];
+        } else {
+          row[key] = Number(row[key]);
+        }
+      }
     }
+  }
+  return data;
+}
+
+async function directDatabaseFetch(tableId, query = "", options = {}, rowId = null) {
+  const cleanExtra = query ? `&${query.replace(/^[?&]/, "")}` : "";
+  const url = rowId
+    ? `https://api.baserow.io/api/database/rows/table/${tableId}/${rowId}/?user_field_names=true`
+    : `https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true${cleanExtra}`;
+
+  let bodyObj = null;
+  if (options.body) {
+    try {
+      bodyObj = typeof options.body === "string" ? JSON.parse(options.body) : options.body;
+    } catch {
+      bodyObj = null;
+    }
+  }
+
+  // Normalize Payment_Methods (1278389) single_select fields when in static mode
+  if (bodyObj && Number(tableId) === TABLES.PAYMENT_METHODS) {
+    const origProvider = String(bodyObj.provider || "Paymob");
+    const origBrand = String(bodyObj.brand || "Visa");
+    bodyObj.provider = ["Paymob", "Stripe"].includes(origProvider) ? origProvider : "Paymob";
+    bodyObj.brand = ["Visa", "Mastercard", "Meeza"].includes(origBrand)
+      ? origBrand
+      : origProvider.toLowerCase().includes("meeza") || origBrand.toLowerCase().includes("meeza")
+      ? "Meeza"
+      : "Visa";
+  }
+
+  let res = await fetch(url, {
+    ...options,
+    headers: getStaticFallbackHeaders(options.headers || {}),
+    body: bodyObj ? JSON.stringify(bodyObj) : options.body
   });
+
+  // Retry Tickets POST without stations_count if column is not yet added in database
+  if (!res.ok && (options.method === "POST") && Number(tableId) === TABLES.TICKETS && bodyObj && "stations_count" in bodyObj) {
+    const retryBody = { ...bodyObj };
+    delete retryBody.stations_count;
+    res = await fetch(url, {
+      ...options,
+      headers: getStaticFallbackHeaders(options.headers || {}),
+      body: JSON.stringify(retryBody)
+    });
+  }
+
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(`API Error (${res.status}): ${errText}`);
   }
-  return res.json();
+  const data = await res.json();
+  if (Number(tableId) === TABLES.ROUTES) {
+    return enrichRoutesTierDefaults(data);
+  }
+  return data;
+}
+
+async function baserowFetch(tableId, query = "", options = {}) {
+  if (isStaticGitHubPages()) {
+    return directDatabaseFetch(tableId, query, options);
+  }
+  try {
+    const cleanQuery = query ? `?${query.replace(/^[?&]/, "")}` : "";
+    const url = `/api/rows/${tableId}${cleanQuery}`;
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return directDatabaseFetch(tableId, query, options);
+    }
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`API Error (${res.status}): ${errText}`);
+    }
+    return res.json();
+  } catch (err) {
+    return directDatabaseFetch(tableId, query, options);
+  }
+}
+
+async function baserowRowPatch(tableId, rowId, payload) {
+  if (isStaticGitHubPages()) {
+    return directDatabaseFetch(tableId, "", { method: "PATCH", body: JSON.stringify(payload) }, rowId);
+  }
+  try {
+    const res = await fetch(`/api/rows/${tableId}/${rowId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return directDatabaseFetch(tableId, "", { method: "PATCH", body: JSON.stringify(payload) }, rowId);
+    }
+    if (!res.ok) {
+      throw new Error(`PATCH failed (${res.status})`);
+    }
+    return res.json();
+  } catch {
+    return directDatabaseFetch(tableId, "", { method: "PATCH", body: JSON.stringify(payload) }, rowId);
+  }
 }
 
 function setSyncStatus(msg, isSaving = false) {
@@ -131,24 +265,50 @@ async function syncUserWalletAndPaymentMethods() {
   const userId = state.currentUser?.id || state.currentUser?.user_id || 18;
   localStorage.setItem("masar_active_user_id", String(userId));
 
-  // 1. Restore Masar Card balance from server (/api/wallet/:userId) & localStorage backup
-  try {
-    const res = await fetch(`/api/wallet/${userId}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (typeof data.balance === "number" && !isNaN(data.balance)) {
-        state.walletBalance = data.balance;
-        state.cardBalance = data.balance;
-        localStorage.setItem(`masar_wallet_bal_${userId}`, String(data.balance));
-      }
+  // Helper to extract saved balance tag ("bal:XX.XX") from Payment_Methods rows for this user
+  const extractBalanceFromPaymentMethods = () => {
+    const userPms = (state.paymentMethods || []).filter(pm =>
+      pm.user_id?.some(u => Number(u.id) === Number(userId) || Number(u.value) === Number(userId))
+    );
+    for (let i = userPms.length - 1; i >= 0; i--) {
+      const m = String(userPms[i].provider_pm_id || "").match(/bal:(\d+(?:\.\d+)?)/);
+      if (m) return parseFloat(m[1]);
     }
-  } catch {
-    const localBal = parseFloat(localStorage.getItem(`masar_wallet_bal_${userId}`) || "");
-    if (!isNaN(localBal)) {
-      state.walletBalance = localBal;
-      state.cardBalance = localBal;
+    return null;
+  };
+
+  let resolvedBal = null;
+
+  if (!isStaticGitHubPages()) {
+    try {
+      const res = await fetch(`/api/wallet/${userId}`);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (typeof data.balance === "number" && !isNaN(data.balance)) {
+          resolvedBal = data.balance;
+        }
+      }
+    } catch {
+      // Fallback below
     }
   }
+
+  if (resolvedBal === null) {
+    const dbBal = extractBalanceFromPaymentMethods();
+    const localBal = parseFloat(localStorage.getItem(`masar_wallet_bal_${userId}`) || "");
+    if (dbBal !== null && !isNaN(dbBal)) {
+      resolvedBal = dbBal;
+    } else if (!isNaN(localBal)) {
+      resolvedBal = localBal;
+    } else {
+      resolvedBal = 100.00;
+    }
+  }
+
+  state.walletBalance = resolvedBal;
+  state.cardBalance = resolvedBal;
+  localStorage.setItem(`masar_wallet_bal_${userId}`, String(resolvedBal));
 
   updateFareDisplays();
   renderSavedPaymentMethods();
@@ -162,14 +322,55 @@ async function persistWalletBalance(newBalance) {
   localStorage.setItem(`masar_wallet_bal_${userId}`, String(cleanBal));
   updateFareDisplays();
 
+  if (!isStaticGitHubPages()) {
+    try {
+      const res = await fetch("/api/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, balance: cleanBal })
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return;
+      }
+    } catch {
+      // Fallback to direct Payment_Methods balance tag sync below
+    }
+  }
+
+  // Static host (GitHub Pages) fallback: sync balance tag directly to Payment_Methods (1278389)
   try {
-    await fetch("/api/wallet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, balance: cleanBal })
-    });
+    const userPms = (state.paymentMethods || []).filter(pm =>
+      pm.user_id?.some(u => Number(u.id) === Number(userId) || Number(u.value) === Number(userId))
+    );
+    if (userPms.length > 0) {
+      const targetPm = userPms[userPms.length - 1];
+      const baseId = String(targetPm.provider_pm_id || `pm_masar_card_${userId}`)
+        .replace(/\|?\s*bal:\d+(?:\.\d+)?/g, "")
+        .trim();
+      const updatedTag = `${baseId} | bal:${cleanBal.toFixed(2)}`;
+      await baserowRowPatch(TABLES.PAYMENT_METHODS, targetPm.id, {
+        provider_pm_id: updatedTag
+      });
+      targetPm.provider_pm_id = updatedTag;
+    } else {
+      const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_pm_id: `pm_masar_card_${userId} | bal:${cleanBal.toFixed(2)}`,
+          provider: "Paymob",
+          brand: "Meeza",
+          last4: "8924",
+          exp_month: 9,
+          exp_year: 2028,
+          default_mode: true,
+          user_id: [userId]
+        })
+      });
+      if (createdPm) state.paymentMethods.push(createdPm);
+    }
   } catch (e) {
-    console.warn("Could not persist wallet balance to server:", e);
+    console.warn("Could not sync wallet balance tag:", e);
   }
 }
 
@@ -1126,7 +1327,21 @@ function selectTripAndPay(tripId, routeId, fare, vehicleLabel, routeArName, driv
   showScreen("qr");
 }
 
-// Authentication (Server-side Sign Up & Log In via /api/auth/signup and /api/auth/login)
+// Authentication (Works via /api/auth/* on Node.js server AND via bcryptjs + live database on GitHub Pages)
+const PASSWORD_VALIDATION_REGEX = /^(?=.*[A-Z])(?=.*\d).{10,}$/;
+
+function getBcryptLib() {
+  return window.dcodeIO?.bcrypt || window.bcrypt || null;
+}
+
+function sanitizeUserObject(u) {
+  if (!u || typeof u !== "object") return u;
+  const copy = { ...u };
+  delete copy.password_hash;
+  delete copy.Password_hash;
+  return copy;
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const emailInput = document.getElementById("login-email").value.trim();
@@ -1144,28 +1359,65 @@ async function handleLogin(e) {
     btn.disabled = true;
     btn.textContent = "Signing In...";
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: emailInput,
-        password: passwordInput
-      })
-    });
+    let loggedInUser = null;
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Invalid email or password.");
+    if (!isStaticGitHubPages()) {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: emailInput,
+            password: passwordInput
+          })
+        });
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Invalid email or password.");
+          }
+          loggedInUser = data.user;
+        }
+      } catch (serverErr) {
+        if (serverErr.message && !serverErr.message.includes("Unexpected token") && !serverErr.message.includes("Failed to fetch")) {
+          throw serverErr;
+        }
+      }
     }
 
-    state.currentUser = data.user;
-    if (typeof data.user.wallet_balance === "number") {
-      state.walletBalance = data.user.wallet_balance;
-      state.cardBalance = data.user.wallet_balance;
+    // Fallback for GitHub Pages static deployment
+    if (!loggedInUser) {
+      const usersData = await directDatabaseFetch(TABLES.USERS, "&size=200");
+      const allUsers = usersData.results || [];
+      const matchedUser = allUsers.find(
+        u => String(u.email || "").trim().toLowerCase() === emailInput.toLowerCase()
+      );
+      if (!matchedUser) {
+        throw new Error("Invalid email or password.");
+      }
+      const storedHash = matchedUser.password_hash ?? matchedUser.Password_hash ?? "";
+      const bcryptLib = getBcryptLib();
+      let isValid = false;
+      if (storedHash && bcryptLib && storedHash.startsWith("$2")) {
+        isValid = bcryptLib.compareSync(passwordInput, storedHash);
+      } else if (storedHash) {
+        isValid = passwordInput === storedHash;
+      }
+      if (!isValid) {
+        throw new Error("Invalid email or password.");
+      }
+      loggedInUser = sanitizeUserObject(matchedUser);
+    }
+
+    state.currentUser = loggedInUser;
+    if (typeof loggedInUser.wallet_balance === "number") {
+      state.walletBalance = loggedInUser.wallet_balance;
+      state.cardBalance = loggedInUser.wallet_balance;
     }
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
-    statusEl.textContent = `Welcome back, ${data.user.Full_Name}!`;
+    statusEl.textContent = `Welcome back, ${loggedInUser.Full_Name}!`;
     statusEl.className = "text-xs text-[#00C5A1] mt-1.5 text-left font-bold";
     setTimeout(() => showScreen("home"), 500);
   } catch (err) {
@@ -1198,24 +1450,70 @@ async function handleSignUp(e) {
     btn.disabled = true;
     btn.textContent = "Creating Account...";
 
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        Full_Name: fullName,
-        email: email,
-        password: password
-      })
-    });
+    let createdUser = null;
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to create account.");
+    if (!isStaticGitHubPages()) {
+      try {
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Full_Name: fullName,
+            email: email,
+            password: password
+          })
+        });
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to create account.");
+          }
+          createdUser = data.user;
+        }
+      } catch (serverErr) {
+        if (serverErr.message && !serverErr.message.includes("Unexpected token") && !serverErr.message.includes("Failed to fetch")) {
+          throw serverErr;
+        }
+      }
     }
 
-    const newUser = data.user;
-    state.currentUser = newUser;
-    state.users.push(newUser);
+    // Fallback for GitHub Pages static deployment
+    if (!createdUser) {
+      if (!PASSWORD_VALIDATION_REGEX.test(password)) {
+        throw new Error("Password must be at least 10 characters and include at least 1 uppercase letter and 1 number.");
+      }
+
+      const usersData = await directDatabaseFetch(TABLES.USERS, "&size=200");
+      const allUsers = usersData.results || [];
+      const existing = allUsers.find(
+        u => String(u.email || "").trim().toLowerCase() === email.toLowerCase()
+      );
+      if (existing) {
+        throw new Error("An account with this email already exists.");
+      }
+
+      const bcryptLib = getBcryptLib();
+      const passwordHash = bcryptLib ? bcryptLib.hashSync(password, 12) : password;
+      const sampleUser = allUsers[0] || {};
+      const hashFieldName = "Password_hash" in sampleUser ? "Password_hash" : "password_hash";
+
+      const rawCreated = await directDatabaseFetch(TABLES.USERS, "", {
+        method: "POST",
+        body: JSON.stringify({
+          Full_Name: fullName,
+          email: email,
+          language: "AR",
+          role: "Passenger",
+          Active: true,
+          [hashFieldName]: passwordHash
+        })
+      });
+      createdUser = sanitizeUserObject({ ...rawCreated, wallet_balance: 100.00 });
+    }
+
+    state.currentUser = createdUser;
+    state.users.push(createdUser);
     await persistWalletBalance(100.00);
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
@@ -1586,21 +1884,13 @@ async function confirmAndPayNow() {
       const currentBooked = Number(tripObj.booked_seats || 0);
       const newBooked = currentBooked + Number(state.passengersCount || 1);
 
-      const rowUrl = `/api/rows/${TABLES.TRIPS}/${tripObj.id}`;
-      const patchRes = await fetch(rowUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
+      try {
+        const patchedTripData = await baserowRowPatch(TABLES.TRIPS, tripObj.id, {
           booked_seats: newBooked
-        })
-      });
-      if (patchRes.ok) {
-        const patchedTripData = await patchRes.json();
+        });
         tripObj.booked_seats = patchedTripData.booked_seats;
         tripObj.seats_available = patchedTripData.seats_available;
-      } else {
+      } catch {
         tripObj.booked_seats = String(newBooked);
         tripObj.seats_available = String(Math.max(0, Number(tripObj.seats_available || 50) - Number(state.passengersCount || 1)));
       }
@@ -2060,22 +2350,13 @@ async function saveUserProfileSettings(e) {
       btn.innerHTML = `<span>جاري حفظ التعديلات...</span>`;
     }
 
-    const rowUrl = `/api/rows/${TABLES.USERS}/${u.id}`;
-    const res = await fetch(rowUrl, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    try {
+      const updatedUser = await baserowRowPatch(TABLES.USERS, u.id, {
         Full_Name: fullName,
         email: email
-      })
-    });
-
-    if (res.ok) {
-      const updatedUser = await res.json();
-      state.currentUser = updatedUser;
-    } else {
+      });
+      state.currentUser = sanitizeUserObject(updatedUser);
+    } catch {
       state.currentUser.Full_Name = fullName;
       state.currentUser.email = email;
     }

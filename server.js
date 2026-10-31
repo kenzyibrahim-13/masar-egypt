@@ -264,15 +264,15 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      // Initialize default 100.00 EGP Masar Card balance for new user
+      // Initialize 0.00 EGP Masar Card balance for new user
       const newUserId = createRes.data?.id || createRes.data?.user_id;
       if (newUserId) {
-        setUserBalanceInStore(newUserId, 100.00);
+        setUserBalanceInStore(newUserId, 0.00);
       }
 
       // Return sanitized user (stripPasswordHash guarantees hash is never returned)
       return sendJson(res, 201, {
-        user: { ...createRes.data, wallet_balance: 100.00 }
+        user: { ...createRes.data, wallet_balance: 0.00 }
       });
     }
 
@@ -318,7 +318,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const savedBal = getUserBalanceFromStore(matchedUser.id);
-      const balance = savedBal !== null ? savedBal : 100.00;
+      const balance = savedBal !== null ? savedBal : 0.00;
 
       // Return sanitized user (never includes password_hash)
       return sendJson(res, 200, {
@@ -356,7 +356,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (bal === null) {
-        bal = setUserBalanceInStore(userId, 100.00);
+        bal = setUserBalanceInStore(userId, 0.00);
       }
 
       return sendJson(res, 200, { userId, balance: bal });
@@ -365,9 +365,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && pathname === "/api/wallet") {
       const body = await readJsonBody(req);
       const userId = Number(body.userId || 18);
-      const newBalance = setUserBalanceInStore(userId, Number(body.balance ?? 100));
+      const newBalance = setUserBalanceInStore(userId, Number(body.balance ?? 0));
 
-      // Also sync balance tag to the user's latest Payment_Methods row in Baserow (1278389)
+      // Also sync balance tag to the user's latest Payment_Methods row in Baserow (1278389) if one exists
       try {
         const pmRes = await baserowServerFetch(
           `/api/database/rows/table/${PAYMENT_METHODS_TABLE_ID}/?user_field_names=true&size=200`
@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
                 })
               }
             );
-          } else {
+          } else if (newBalance > 0) {
             await baserowServerFetch(
               `/api/database/rows/table/${PAYMENT_METHODS_TABLE_ID}/?user_field_names=true`,
               {

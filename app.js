@@ -19,8 +19,8 @@ const state = {
     Phone_Number: "01000004519",
     role: "Passenger"
   },
-  walletBalance: 100.00,
-  cardBalance: 100.00,
+  walletBalance: 0.00,
+  cardBalance: 0.00,
   passengersCount: 1,
   baseFare: 8.00,
   selectedCategory: "metro", // Default to Metro Line 3 (Adly Mansour <-> Cairo University)
@@ -302,7 +302,7 @@ async function syncUserWalletAndPaymentMethods() {
     } else if (!isNaN(localBal)) {
       resolvedBal = localBal;
     } else {
-      resolvedBal = 100.00;
+      resolvedBal = 0.00;
     }
   }
 
@@ -353,7 +353,7 @@ async function persistWalletBalance(newBalance) {
         provider_pm_id: updatedTag
       });
       targetPm.provider_pm_id = updatedTag;
-    } else {
+    } else if (cleanBal > 0) {
       const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
         method: "POST",
         body: JSON.stringify({
@@ -1417,6 +1417,7 @@ async function handleLogin(e) {
     }
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
+    renderTicketsHistory();
     statusEl.textContent = `Welcome back, ${loggedInUser.Full_Name}!`;
     statusEl.className = "text-xs text-[#00C5A1] mt-1.5 text-left font-bold";
     setTimeout(() => showScreen("home"), 500);
@@ -1509,14 +1510,17 @@ async function handleSignUp(e) {
           [hashFieldName]: passwordHash
         })
       });
-      createdUser = sanitizeUserObject({ ...rawCreated, wallet_balance: 100.00 });
+      createdUser = sanitizeUserObject({ ...rawCreated, wallet_balance: 0.00 });
     }
 
     state.currentUser = createdUser;
     state.users.push(createdUser);
-    await persistWalletBalance(100.00);
+    state.walletBalance = 0.00;
+    state.cardBalance = 0.00;
+    await persistWalletBalance(0.00);
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
+    renderTicketsHistory();
     renderDatabaseInspector();
 
     statusEl.textContent = `Account created for "${fullName}"!`;
@@ -2214,15 +2218,12 @@ function renderTicketsHistory() {
   const container = document.getElementById("user-tickets-history-list");
   if (!container) return;
 
-  const currentUserId = state.currentUser?.id || state.currentUser?.user_id || 18;
+  const currentUserId = state.currentUser?.id || state.currentUser?.user_id || 0;
 
-  // Filter tickets belonging to current user (or show all if none yet)
-  let userTickets = state.tickets.filter(t =>
-    t.user_id?.some(u => u.id === currentUserId || String(u.value) === String(currentUserId))
+  // Strictly filter tickets belonging ONLY to the currently logged-in user
+  const userTickets = state.tickets.filter(t =>
+    t.user_id?.some(u => Number(u.id) === Number(currentUserId) || String(u.value) === String(currentUserId))
   );
-  if (userTickets.length === 0) {
-    userTickets = state.tickets;
-  }
 
   if (userTickets.length === 0) {
     container.innerHTML = `

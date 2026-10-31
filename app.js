@@ -63,7 +63,10 @@ const DEFAULT_ROUTE_TIERS = {
 };
 
 function isStaticGitHubPages() {
-  return window.location.hostname.endsWith("github.io") || window.location.protocol === "file:";
+  return (
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  );
 }
 
 function getStaticFallbackHeaders(extraHeaders = {}) {
@@ -376,10 +379,23 @@ async function persistWalletBalance(newBalance) {
 
 function renderSavedPaymentMethods() {
   const userId = state.currentUser?.id || state.currentUser?.user_id || 18;
-  const userPms = (state.paymentMethods || []).filter(pm =>
+  const rawUserPms = (state.paymentMethods || []).filter(pm =>
     pm.last4 &&
     pm.user_id?.some(u => Number(u.id) === Number(userId) || Number(u.value) === Number(userId))
   );
+
+  // Deduplicate saved cards by brand + last4 (keep most recent entry for each card)
+  const seenKeys = new Set();
+  const userPms = [];
+  for (let i = rawUserPms.length - 1; i >= 0; i--) {
+    const pm = rawUserPms[i];
+    const brand = pm.brand?.value || pm.brand || "Visa";
+    const key = `${brand}_${pm.last4}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      userPms.unshift(pm);
+    }
+  }
 
   // Update the virtual Masar Card display with the latest saved card's last4 and expiry
   if (userPms.length > 0) {
@@ -392,7 +408,7 @@ function renderSavedPaymentMethods() {
     }
   }
 
-  // 1. Render on Wallet Screen (#wallet-saved-payment-methods)
+  // 1. Render clickable saved cards on Wallet Screen (#wallet-saved-payment-methods) so user can recharge with 1 tap
   const walletContainer = document.getElementById("wallet-saved-payment-methods");
   if (walletContainer) {
     if (userPms.length === 0) {
@@ -400,22 +416,32 @@ function renderSavedPaymentMethods() {
     } else {
       walletContainer.classList.remove("hidden");
       walletContainer.innerHTML = `
-        <div class="text-[11px] font-extrabold text-[#1F1B38] border-b border-gray-100 pb-1">
-          💳 وسائل الدفع المحفوظة لحسابك (${userPms.length}):
+        <div class="flex items-center justify-between border-b border-gray-100 pb-1.5" dir="rtl">
+          <span class="text-[11px] font-extrabold text-[#1F1B38]">💳 وسائل الدفع المحفوظة لحسابك (${userPms.length}):</span>
+          <span class="text-[10px] font-bold text-[#009688]">اضغط على البطاقة للشحن الفوري</span>
         </div>
-        <div class="space-y-1.5">
-          ${userPms.slice(-4).reverse().map(pm => {
+        <div class="space-y-1.5 pt-1">
+          ${userPms.slice(-5).reverse().map(pm => {
             const brand = pm.brand?.value || pm.brand || "Visa";
             const provider = pm.provider?.value || pm.provider || "Paymob";
-            const exp = pm.exp_month && pm.exp_year ? `${String(pm.exp_month).padStart(2, "0")}/${String(pm.exp_year).slice(-2)}` : "09/28";
+            const m = pm.exp_month || 9;
+            const y = pm.exp_year || 2028;
+            const exp = `${String(m).padStart(2, "0")}/${String(y).slice(-2)}`;
+            const isSelectedForRecharge = state.activeSavedRechargeCardKey === `${brand}_${pm.last4}`;
             return `
-              <div class="flex items-center justify-between bg-[#F6F4EC] px-3 py-1.5 rounded-xl text-[11px]">
+              <button type="button" onclick="useSavedCardForRecharge('${pm.last4}', ${m}, ${y}, '${brand}')"
+                class="w-full flex items-center justify-between ${isSelectedForRecharge ? 'bg-[#CCFBF1] border-2 border-[#00C5A1]' : 'bg-[#F6F4EC] hover:bg-[#CCFBF1]/60 border border-gray-200/80'} px-3 py-2 rounded-xl text-[11px] transition cursor-pointer">
                 <div class="flex items-center gap-1.5 font-extrabold text-[#1F1B38]">
                   <span class="bg-[#231942] text-[#00E5B0] px-2 py-0.5 rounded-md text-[10px]">${brand}</span>
                   <span dir="ltr">•••• ${pm.last4}</span>
                 </div>
-                <div class="text-[10px] font-bold text-[#009688]">${provider} • EXP ${exp}</div>
-              </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-bold text-gray-500">${provider} • EXP ${exp}</span>
+                  <span class="bg-[#00C5A1] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg shadow-2xs">
+                    ${isSelectedForRecharge ? '✓ تم الاختيار' : 'استخدام للشحن ←'}
+                  </span>
+                </div>
+              </button>
             `;
           }).join("")}
         </div>
@@ -431,17 +457,20 @@ function renderSavedPaymentMethods() {
     } else {
       paymentCardsContainer.classList.remove("hidden");
       paymentCardsContainer.innerHTML = `
-        <div class="text-[10px] font-extrabold text-[#009688]">اختر من بطاقاتك المحفوظة بضغطة واحدة:</div>
+        <div class="text-[10px] font-extrabold text-[#009688]">اختر من بطاقاتك المحفوظة للدفع بضغطة واحدة:</div>
         <div class="space-y-1">
-          ${userPms.slice(-3).reverse().map(pm => {
+          ${userPms.slice(-4).reverse().map(pm => {
             const brand = pm.brand?.value || pm.brand || "Visa";
             const m = pm.exp_month || 9;
             const y = pm.exp_year || 2028;
+            const isSelectedForTicket = state.activeSavedTicketCardKey === `${brand}_${pm.last4}`;
             return `
               <button type="button" onclick="useSavedCardForTicket('${pm.last4}', ${m}, ${y}, '${brand}')"
-                class="w-full flex items-center justify-between bg-[#CCFBF1]/60 hover:bg-[#CCFBF1] border border-[#00C5A1]/40 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold text-[#1F1B38] transition cursor-pointer">
-                <span>💳 ${brand} <span dir="ltr">•••• ${pm.last4}</span></span>
-                <span class="text-[10px] text-[#0F766E]">استخدام البطاقة ←</span>
+                class="w-full flex items-center justify-between ${isSelectedForTicket ? 'bg-[#CCFBF1] border-2 border-[#00C5A1]' : 'bg-[#CCFBF1]/60 hover:bg-[#CCFBF1] border border-[#00C5A1]/40'} px-2.5 py-2 rounded-xl text-[11px] font-extrabold text-[#1F1B38] transition cursor-pointer">
+                <span>💳 ${brand} <span dir="ltr">•••• ${pm.last4}</span> (EXP ${String(m).padStart(2, "0")}/${String(y).slice(-2)})</span>
+                <span class="bg-[#231942] text-[#00E5B0] text-[10px] px-2 py-0.5 rounded-lg">
+                  ${isSelectedForTicket ? '✓ تم اختيار البطاقة' : 'استخدام البطاقة ←'}
+                </span>
               </button>
             `;
           }).join("")}
@@ -451,7 +480,43 @@ function renderSavedPaymentMethods() {
   }
 }
 
+function useSavedCardForRecharge(last4, expMonth, expYear, brand) {
+  state.activeSavedRechargeCardKey = `${brand}_${last4}`;
+  state.usingExistingSavedCardForRecharge = true;
+
+  const providerKey = brand === "Meeza" ? "meeza" : "bank";
+  selectRechargeMethod(providerKey);
+
+  const prefix = brand === "Mastercard" ? "5200 0000 0000 " : brand === "Meeza" ? "5078 0000 0000 " : "4111 1111 1111 ";
+  const holderInput = document.getElementById("pm-input-holder");
+  const numInput = document.getElementById("pm-input-cardnum");
+  const monthInput = document.getElementById("pm-input-month");
+  const yearInput = document.getElementById("pm-input-year");
+  const cvvInput = document.getElementById("pm-input-cvv");
+
+  if (holderInput) holderInput.value = state.currentUser?.Full_Name || "Passenger";
+  if (numInput) numInput.value = `${prefix}${last4}`;
+  if (monthInput) monthInput.value = String(expMonth || 9);
+  if (yearInput) yearInput.value = String(expYear || 2028);
+  if (cvvInput) cvvInput.value = "123";
+
+  const title = document.getElementById("recharge-form-title");
+  if (title) {
+    title.innerHTML = `<span class="text-[#009688]">✓ تم اختيار بطاقتك المحفوظة (${brand} •••• ${last4}) — حدد المبلغ واضغط تأكيد الشحن:</span>`;
+  }
+
+  renderSavedPaymentMethods();
+
+  const formEl = document.getElementById("recharge-details-form");
+  if (formEl) {
+    formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
 function useSavedCardForTicket(last4, expMonth, expYear, brand) {
+  state.activeSavedTicketCardKey = `${brand}_${last4}`;
+  state.usingExistingSavedCardForTicket = true;
+
   const holderInput = document.getElementById("ticket-cc-holder");
   const numInput = document.getElementById("ticket-cc-number");
   const monthInput = document.getElementById("ticket-cc-month");
@@ -461,12 +526,18 @@ function useSavedCardForTicket(last4, expMonth, expYear, brand) {
   const prefix = brand === "Mastercard" ? "5200 0000 0000 " : brand === "Meeza" ? "5078 0000 0000 " : "4111 1111 1111 ";
   if (holderInput) holderInput.value = state.currentUser?.Full_Name || "Passenger";
   if (numInput) numInput.value = `${prefix}${last4}`;
-  if (monthInput) monthInput.value = String(expMonth);
-  if (yearInput) yearInput.value = String(expYear);
-  if (cvvInput && !cvvInput.value) cvvInput.value = "123";
+  if (monthInput) monthInput.value = String(expMonth || 9);
+  if (yearInput) yearInput.value = String(expYear || 2028);
+  if (cvvInput) cvvInput.value = "123";
 
   const errEl = document.getElementById("ticket-cc-error");
-  if (errEl) errEl.classList.add("hidden");
+  if (errEl) {
+    errEl.textContent = `✓ تم اختيار البطاقة المحفوظة (${brand} •••• ${last4}) — اضغط على زر تأكيد ودفع بالأسفل لإصدار التذكرة فوراً.`;
+    errEl.className = "text-[11px] font-extrabold text-[#009688] text-right mt-1";
+    errEl.classList.remove("hidden");
+  }
+
+  renderSavedPaymentMethods();
 }
 
 function updateUserDisplays() {
@@ -1812,29 +1883,40 @@ async function confirmAndPayNow() {
       await persistWalletBalance(nextBal);
     }
 
-    // If paid with Credit Card ("card"), save the card to PAYMENT_METHODS (1278389) in Baserow
+    // If paid with Credit Card ("card"), save the card to PAYMENT_METHODS (1278389) only if it's not already saved for this user
     if (method === "card" && ccData) {
-      try {
-        const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
-          method: "POST",
-          body: JSON.stringify({
-            provider_pm_id: `pm_card_${Date.now().toString().slice(-6)}`,
-            provider: "Paymob",
-            brand: ["Visa", "Mastercard", "Meeza"].includes(ccData.brand) ? ccData.brand : "Visa",
-            last4: ccData.last4,
-            exp_month: ccData.expMonth,
-            exp_year: ccData.expYear,
-            default_mode: true,
-            user_id: state.currentUser?.id ? [state.currentUser.id] : [18]
-          })
-        });
-        if (createdPm) {
-          state.paymentMethods.push(createdPm);
-          renderSavedPaymentMethods();
+      const uid = state.currentUser?.id || state.currentUser?.user_id || 18;
+      const validBrand = ["Visa", "Mastercard", "Meeza"].includes(ccData.brand) ? ccData.brand : "Visa";
+      const alreadyExists = (state.paymentMethods || []).some(pm =>
+        String(pm.last4) === String(ccData.last4) &&
+        String(pm.brand?.value || pm.brand || "Visa") === validBrand &&
+        pm.user_id?.some(u => Number(u.id) === Number(uid) || Number(u.value) === Number(uid))
+      );
+
+      if (!alreadyExists && !state.usingExistingSavedCardForTicket) {
+        try {
+          const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
+            method: "POST",
+            body: JSON.stringify({
+              provider_pm_id: `pm_card_${Date.now().toString().slice(-6)}`,
+              provider: "Paymob",
+              brand: validBrand,
+              last4: ccData.last4,
+              exp_month: ccData.expMonth,
+              exp_year: ccData.expYear,
+              default_mode: true,
+              user_id: [uid]
+            })
+          });
+          if (createdPm) {
+            state.paymentMethods.push(createdPm);
+            renderSavedPaymentMethods();
+          }
+        } catch (pmErr) {
+          console.warn("Could not save credit card metadata:", pmErr);
         }
-      } catch (pmErr) {
-        console.warn("Could not save credit card metadata:", pmErr);
       }
+      state.usingExistingSavedCardForTicket = false;
     }
 
     const pmNameMap = {
@@ -2159,23 +2241,33 @@ async function submitRechargeForm(e) {
       ? "Meeza"
       : "Visa";
 
-    const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
-      method: "POST",
-      body: JSON.stringify({
-        provider_pm_id: `pm_${providerKey || "card"}_${last4}_${Date.now().toString().slice(-4)}`,
-        provider: "Paymob",
-        brand: validBrand,
-        last4: last4,
-        exp_month: expMonth,
-        exp_year: expYear,
-        default_mode: true,
-        user_id: state.currentUser?.id ? [state.currentUser.id] : [18]
-      })
-    });
+    const uid = state.currentUser?.id || state.currentUser?.user_id || 18;
+    const alreadySaved = (state.paymentMethods || []).some(pm =>
+      String(pm.last4) === String(last4) &&
+      String(pm.brand?.value || pm.brand || "Visa") === validBrand &&
+      pm.user_id?.some(u => Number(u.id) === Number(uid) || Number(u.value) === Number(uid))
+    );
 
-    if (createdPm) {
-      state.paymentMethods.push(createdPm);
+    if (!alreadySaved && !state.usingExistingSavedCardForRecharge) {
+      const createdPm = await baserowFetch(TABLES.PAYMENT_METHODS, "", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_pm_id: `pm_${providerKey || "card"}_${last4}_${Date.now().toString().slice(-4)}`,
+          provider: "Paymob",
+          brand: validBrand,
+          last4: last4,
+          exp_month: expMonth,
+          exp_year: expYear,
+          default_mode: true,
+          user_id: [uid]
+        })
+      });
+
+      if (createdPm) {
+        state.paymentMethods.push(createdPm);
+      }
     }
+    state.usingExistingSavedCardForRecharge = false;
 
     const nextBal = state.walletBalance + amount;
     await persistWalletBalance(nextBal);

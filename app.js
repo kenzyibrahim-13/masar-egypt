@@ -222,6 +222,17 @@ function setSyncStatus(msg, isSaving = false) {
   }
 }
 
+// Loads every page of a table (the database returns max 200 rows per request)
+async function baserowFetchAll(tableId, maxPages = 10) {
+  let all = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await baserowFetch(tableId, `&size=200&page=${page}`);
+    all = all.concat(res?.results || []);
+    if (!res?.next) break;
+  }
+  return { results: all, count: all.length };
+}
+
 async function loadInitialDatabase() {
   try {
     setSyncStatus("Syncing database tables...", true);
@@ -229,7 +240,7 @@ async function loadInitialDatabase() {
       baserowFetch(TABLES.USERS, "&size=100"),
       baserowFetch(TABLES.ROUTES, "&size=50"),
       baserowFetch(TABLES.STATIONS, "&size=100"),
-      baserowFetch(TABLES.TRIPS, "&size=100"),
+      baserowFetchAll(TABLES.TRIPS),
       baserowFetch(TABLES.DRIVERS, "&size=50"),
       baserowFetch(TABLES.TICKETS, "&size=50"),
       baserowFetch(TABLES.PAYMENT_METHODS, "&size=100")

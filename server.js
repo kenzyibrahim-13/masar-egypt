@@ -632,12 +632,23 @@ const TRIPS_SWEEP_TABLE_ID = 1278387;
 const STATIONS_SWEEP_TABLE_ID = 1278386;
 const TRIP_MINUTES_PER_STATION = { 112: 2, 113: 3, 117: 4 };
 
+async function fetchAllServerRows(tableId) {
+  let all = [];
+  for (let page = 1; page <= 20; page++) {
+    const r = await baserowServerFetch(`/api/database/rows/table/${tableId}/?user_field_names=true&size=200&page=${page}`);
+    if (!r.ok) return { ok: false, data: { results: all } };
+    all = all.concat(r.data?.results || []);
+    if (!r.data?.next) break;
+  }
+  return { ok: true, data: { results: all } };
+}
+
 async function updateTripStatuses() {
   if (!BASEROW_TOKEN) return;
   try {
     const q = "?user_field_names=true&size=200";
     const [tripsRes, stationsRes, routesRes] = await Promise.all([
-      baserowServerFetch(`/api/database/rows/table/${TRIPS_SWEEP_TABLE_ID}/${q}`),
+      fetchAllServerRows(TRIPS_SWEEP_TABLE_ID),
       baserowServerFetch(`/api/database/rows/table/${STATIONS_SWEEP_TABLE_ID}/${q}`),
       baserowServerFetch(`/api/database/rows/table/${ROUTES_TABLE_ID}/${q}`)
     ]);

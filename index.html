@@ -102,8 +102,11 @@
             <div>
               <div class="live-user-name font-extrabold text-sm text-[#1F1B38]">Mariam Fathy</div>
               <div class="live-user-email text-[11px] text-gray-500">Passenger1@example.com</div>
-              <span class="inline-block mt-0.5 bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                الرصيد: <span class="dynamic-wallet-balance">100.00</span> ج.م
+              <span id="drawer-passenger-balance-badge" class="inline-block mt-0.5 bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                الرصيد: <span class="dynamic-wallet-balance">0.00</span> ج.م
+              </span>
+              <span id="drawer-role-only-badge" class="hidden mt-0.5 bg-[#231942] text-[#00E5B0] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
+                Driver
               </span>
             </div>
           </div>
@@ -112,35 +115,63 @@
           </button>
         </div>
 
-        <!-- Side Navigation Menu Items -->
+        <!-- Side Navigation Menu Items (Strictly separated per Role) -->
         <nav class="mt-4 space-y-2" dir="rtl">
-          <button onclick="navigateFromDrawer('home')"
-            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
-            <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🏠</span>
-            <div class="text-right">
-              <div>الرئيسية (حجز الرحلات)</div>
-              <div class="text-[10px] text-gray-500 font-medium">خطوط المترو و LRT والأتوبيس</div>
-            </div>
-          </button>
+          <!-- PASSENGER NAVIGATION -->
+          <div id="drawer-nav-passenger" class="space-y-2">
+            <button onclick="navigateFromDrawer('home')"
+              class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+              <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🏠</span>
+              <div class="text-right">
+                <div>الرئيسية (حجز الرحلات)</div>
+                <div class="text-[10px] text-gray-500 font-medium">خطوط المترو و LRT والأتوبيس</div>
+              </div>
+            </button>
 
-          <button onclick="navigateFromDrawer('history')"
-            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
-            <span class="w-8 h-8 rounded-xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center">🧾</span>
-            <div class="text-right">
-              <div>الإيصالات والتذاكر السابقة</div>
-              <div class="text-[10px] text-gray-500 font-medium">سجل الرحلات والتذاكر المحجوزة</div>
-            </div>
-          </button>
+            <button onclick="navigateFromDrawer('history')"
+              class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+              <span class="w-8 h-8 rounded-xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center">🧾</span>
+              <div class="text-right">
+                <div>الإيصالات والتذاكر السابقة</div>
+                <div class="text-[10px] text-gray-500 font-medium">سجل الرحلات والتذاكر المحجوزة</div>
+              </div>
+            </button>
 
-          <button onclick="navigateFromDrawer('wallet')"
-            class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
-            <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🪪</span>
-            <div class="text-right">
-              <div>المحفظة وكارت مسار</div>
-              <div class="text-[10px] text-gray-500 font-medium">الرصيد المتاح وشحن الكارت</div>
-            </div>
-          </button>
+            <button onclick="navigateFromDrawer('wallet')"
+              class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+              <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🪪</span>
+              <div class="text-right">
+                <div>المحفظة وكارت مسار</div>
+                <div class="text-[10px] text-gray-500 font-medium">الرصيد المتاح وشحن الكارت</div>
+              </div>
+            </button>
+          </div>
 
+          <!-- DRIVER NAVIGATION -->
+          <div id="drawer-nav-driver" class="hidden space-y-2">
+            <button onclick="navigateFromDrawer('driver')"
+              class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+              <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🚍</span>
+              <div class="text-right">
+                <div>لوحة تحكم السائق (رحلاتي)</div>
+                <div class="text-[10px] text-gray-500 font-medium">اختيار الرحلات وبدء / إنهاء الرحلة</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- ADMIN NAVIGATION -->
+          <div id="drawer-nav-admin" class="hidden space-y-2">
+            <button onclick="navigateFromDrawer('admin')"
+              class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
+              <span class="w-8 h-8 rounded-xl bg-[#231942] text-[#00E5B0] flex items-center justify-center">🛡️</span>
+              <div class="text-right">
+                <div>لوحة تحكم الإدارة (Admin)</div>
+                <div class="text-[10px] text-gray-500 font-medium">إضافة رحلات وتصدير أحدث التسجيلات</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- SHARED PERSONAL SETTINGS -->
           <button onclick="navigateFromDrawer('settings')"
             class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white hover:bg-[#CCFBF1]/60 text-[#1F1B38] font-extrabold text-xs shadow-2xs border border-gray-100 transition cursor-pointer">
             <span class="w-8 h-8 rounded-xl bg-[#231942] text-white flex items-center justify-center">⚙️</span>
@@ -154,7 +185,7 @@
 
       <!-- Bottom Logout Button -->
       <div class="pt-3 border-t border-gray-200">
-        <button onclick="navigateFromDrawer('login')"
+        <button onclick="logoutUser()"
           class="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer">
           <span>تسجيل الخروج / تبديل الحساب</span>
           <span>↪</span>
@@ -213,7 +244,29 @@
         </div>
 
         <!-- Form Card -->
-        <form onsubmit="handleLogin(event)" class="w-full bg-white rounded-xl p-5 shadow-sm border border-gray-200/80 flex flex-col gap-4">
+        <form onsubmit="handleLogin(event)" class="w-full bg-white rounded-xl p-5 shadow-sm border border-gray-200/80 flex flex-col gap-3.5">
+          <!-- Role Quick-Select Bar (Fills Verified Database Credentials for Passenger / Driver / Admin) -->
+          <div class="bg-[#F6F4EC] rounded-xl p-2 border border-gray-200/80 space-y-1.5">
+            <div class="text-[11px] font-bold text-[#1F1B38] flex items-center justify-between">
+              <span>Select Role / Quick Demo Login:</span>
+              <span class="text-[10px] text-[#009688]">Auto-routes by DB role</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button type="button" onclick="fillRoleDemoLogin('Passenger')" data-demo-role="Passenger"
+                class="role-demo-btn py-1.5 px-2 rounded-lg bg-[#231942] text-[#00E5B0] text-[11px] font-extrabold text-center transition cursor-pointer">
+                👤 Passenger
+              </button>
+              <button type="button" onclick="fillRoleDemoLogin('Driver')" data-demo-role="Driver"
+                class="role-demo-btn py-1.5 px-2 rounded-lg bg-white text-[#1F1B38] border border-gray-200 text-[11px] font-extrabold text-center hover:bg-[#CCFBF1]/50 transition cursor-pointer">
+                🚍 Driver
+              </button>
+              <button type="button" onclick="fillRoleDemoLogin('Admin')" data-demo-role="Admin"
+                class="role-demo-btn py-1.5 px-2 rounded-lg bg-white text-[#1F1B38] border border-gray-200 text-[11px] font-extrabold text-center hover:bg-[#CCFBF1]/50 transition cursor-pointer">
+                🛡️ Admin
+              </button>
+            </div>
+          </div>
+
           <div>
             <label class="block text-sm text-gray-800 font-semibold mb-1.5 text-left">Email</label>
             <input id="login-email" type="email" value="Passenger1@example.com" placeholder="Enter your email"
@@ -222,7 +275,7 @@
 
           <div>
             <label class="block text-sm text-gray-800 font-semibold mb-1.5 text-left">Password</label>
-            <input id="login-password" type="password" placeholder="Enter your password" required
+            <input id="login-password" type="password" value="Masar2026!" placeholder="Enter your password" required
               class="w-full px-3.5 py-2.5 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
             <div id="login-status-msg" class="text-[11px] text-gray-500 text-left mt-1.5 empty:hidden"></div>
           </div>
@@ -233,7 +286,7 @@
           </button>
 
           <div class="text-left">
-            <a href="javascript:void(0)" onclick="alert('Please contact support or sign up with a new account.')"
+            <a href="javascript:void(0)" onclick="alert('Default password for pre-seeded Passenger / Driver / Admin accounts is: Masar2026!')"
               class="text-sm text-gray-800 underline hover:text-[#231942]">Forgot password?</a>
           </div>
         </form>
@@ -280,8 +333,35 @@
           </div>
 
           <div>
+            <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Account Role</label>
+            <select id="signup-role" onchange="onSignupRoleChange(this.value)"
+              class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm font-semibold text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]">
+              <option value="Passenger">👤 Passenger (راكب)</option>
+              <option value="Driver">🚍 Driver (سائق / كابتن)</option>
+              <option value="Admin">🛡️ Admin (مدير النظام)</option>
+            </select>
+          </div>
+
+          <!-- Extra Driver Vehicle Info (shown only when signing up as a Driver) -->
+          <div id="signup-driver-fields" class="hidden grid grid-cols-2 gap-2 bg-[#F6F4EC] p-2.5 rounded-xl border border-gray-200">
+            <div>
+              <label class="block text-xs text-gray-700 font-bold mb-1 text-left">Vehicle Type</label>
+              <select id="signup-driver-type" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-800">
+                <option value="Bus">Bus (أتوبيس)</option>
+                <option value="Train">Train (مترو / قطار)</option>
+                <option value="Microbus">Microbus</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-700 font-bold mb-1 text-left">Vehicle Plate #</label>
+              <input id="signup-vehicle-number" type="text" placeholder="e.g. BUS-402"
+                class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-800" />
+            </div>
+          </div>
+
+          <div>
             <label class="block text-sm text-gray-800 font-semibold mb-1 text-left">Password</label>
-            <input id="signup-password" type="password" placeholder="Enter your password"
+            <input id="signup-password" type="password" placeholder="Min 10 chars, 1 uppercase, 1 digit"
               class="w-full px-3.5 py-2 rounded-lg bg-[#F5F3EB] border border-gray-200 text-sm text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#231942]" />
             <div id="signup-status-msg" class="text-[11px] text-gray-500 text-left mt-1.5 empty:hidden"></div>
           </div>
@@ -1241,7 +1321,7 @@
           <div class="w-5 h-7 rounded bg-[#EFECE1] overflow-hidden">
             <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
           </div>
-          <button onclick="showScreen('home')" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
+          <button onclick="goToRoleHome()" class="text-[#1F1B38] hover:opacity-75 cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -1293,9 +1373,282 @@
       </div>
     </section>
 
+    <!-- ==========================================
+         SCREEN 11: DRIVER PROFILE & TRIP OPERATIONS (لوحة السائق)
+    =========================================== -->
+    <section id="screen-driver" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <div class="flex items-center gap-2">
+          <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+            <img src="assets/default-avatar.jpg" alt="Driver" class="w-full h-full object-cover" />
+          </button>
+          <button onclick="logoutUser()" class="px-2.5 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-extrabold cursor-pointer">
+            خروج ↪
+          </button>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="text-right" dir="rtl">
+            <div class="font-extrabold text-sm text-[#1F1B38] leading-tight">بوابة السائق | Driver</div>
+            <div class="text-[10px] font-bold text-[#009688]">إدارة واستلام الرحلات المباشرة</div>
+          </div>
+          <div class="w-6 h-8 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Driver Body -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-3.5" dir="rtl">
+        <!-- Driver Profile Identity Card -->
+        <div class="bg-[#231942] rounded-2xl p-4 text-white shadow-lg space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-11 h-11 rounded-2xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center font-black text-lg shadow">
+                🚍
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="live-user-name font-extrabold text-sm text-white">Hassan Mahmoud</span>
+                  <span class="bg-[#00C5A1] text-[#1F1B38] text-[9px] font-extrabold px-2 py-0.5 rounded-full">سائق معتمد ✓</span>
+                </div>
+                <div class="live-user-email text-[11px] text-teal-200/90">Driver2@example.com</div>
+              </div>
+            </div>
+            <button onclick="refreshDriverPortalData()" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-[#00E5B0] text-[10px] font-extrabold cursor-pointer">
+              ↻ تحديث
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-white/15 text-center">
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">رقم المركبة</div>
+              <div id="driver-portal-vehicle-num" class="text-xs font-black text-white mt-0.5">TEST-1003</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">نوع المركبة</div>
+              <div id="driver-portal-vehicle-type" class="text-xs font-black text-[#00E5B0] mt-0.5">Bus</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">رحلاتي النشطة</div>
+              <div id="driver-portal-active-count" class="text-xs font-black text-white mt-0.5">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Feedback Alert -->
+        <div id="driver-action-feedback" class="hidden rounded-2xl px-3.5 py-2.5 text-xs font-extrabold text-center shadow-xs"></div>
+
+        <!-- Section 1: My Assigned Trips (Start & End Trip Buttons) -->
+        <div class="bg-white rounded-2xl p-3.5 shadow-xs border border-gray-100 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#00C5A1] animate-pulse"></span>
+              <h3 class="font-extrabold text-xs text-[#1F1B38]">1. رحلاتي المختارة (بدء وإنهاء الرحلة):</h3>
+            </div>
+            <span class="text-[10px] font-bold text-[#009688]">تحديث فوري للركاب</span>
+          </div>
+
+          <div id="driver-my-trips-list" class="space-y-2.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Section 2: Choose Upcoming Trips to Take -->
+        <div class="bg-white rounded-2xl p-3.5 shadow-xs border border-gray-100 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 class="font-extrabold text-xs text-[#1F1B38]">2. اختر رحلة جديدة لاستلامها (الرحلات المجدولة):</h3>
+            <select id="driver-available-route-filter" onchange="renderDriverPortal()"
+              class="px-2 py-1 rounded-lg bg-[#F6F4EC] border border-gray-200 text-[10px] font-extrabold text-[#1F1B38]">
+              <option value="all">كل الخطوط</option>
+              <option value="117">أتوبيس القاهرة الجديدة</option>
+              <option value="112">الخط الثالث للمترو</option>
+              <option value="113">القطار الكهربائي LRT</option>
+            </select>
+          </div>
+
+          <div id="driver-available-trips-list" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 12: ADMIN PROFILE, ADD TRIPS & DATABASE EXPORT (لوحة الإدارة)
+    =========================================== -->
+    <section id="screen-admin" class="app-screen hidden flex-1 flex flex-col justify-between bg-[#F6F4EC]">
+      <!-- Top Bar -->
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/60">
+        <div class="flex items-center gap-2">
+          <button onclick="toggleProfileDrawer(true)" class="w-9 h-9 rounded-full overflow-hidden border-2 border-[#00C5A1] shadow cursor-pointer" title="القائمة الجانبية">
+            <img src="assets/default-avatar.jpg" alt="Admin" class="w-full h-full object-cover" />
+          </button>
+          <button onclick="logoutUser()" class="px-2.5 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-extrabold cursor-pointer">
+            خروج ↪
+          </button>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <div class="text-right" dir="rtl">
+            <div class="font-extrabold text-sm text-[#1F1B38] leading-tight">لوحة الإدارة | Admin</div>
+            <div class="text-[10px] font-bold text-[#009688]">إضافة الرحلات وتصدير التسجيلات</div>
+          </div>
+          <div class="w-6 h-8 rounded bg-[#EFECE1] overflow-hidden">
+            <img src="assets/splash.png" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Body -->
+      <div class="p-4 flex-1 overflow-y-auto space-y-3.5" dir="rtl">
+        <!-- Admin Identity & Live Database Summary Card -->
+        <div class="bg-[#231942] rounded-2xl p-4 text-white shadow-lg space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-11 h-11 rounded-2xl bg-[#00C5A1] text-[#1F1B38] flex items-center justify-center font-black text-lg shadow">
+                🛡️
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="live-user-name font-extrabold text-sm text-white">Karim Fouad</span>
+                  <span class="bg-[#00E5B0] text-[#1F1B38] text-[9px] font-extrabold px-2 py-0.5 rounded-full">Admin • مدير النظام</span>
+                </div>
+                <div class="live-user-email text-[11px] text-teal-200/90">Admin1@example.com</div>
+              </div>
+            </div>
+            <button onclick="refreshAdminPortalData()" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-[#00E5B0] text-[10px] font-extrabold cursor-pointer">
+              ↻ تحديث
+            </button>
+          </div>
+
+          <div class="grid grid-cols-4 gap-1.5 pt-2 border-t border-white/15 text-center">
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">المستخدمون</div>
+              <div id="admin-stat-users" class="text-xs font-black text-white mt-0.5">0</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">الرحلات</div>
+              <div id="admin-stat-trips" class="text-xs font-black text-[#00E5B0] mt-0.5">0</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">السائقون</div>
+              <div id="admin-stat-drivers" class="text-xs font-black text-white mt-0.5">0</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-2">
+              <div class="text-[9px] text-teal-200 font-semibold">التذاكر</div>
+              <div id="admin-stat-tickets" class="text-xs font-black text-white mt-0.5">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 1: Database Export — Latest Registrations -->
+        <div class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <div>
+              <h3 class="font-extrabold text-xs text-[#1F1B38]">📥 تصدير أحدث التسجيلات من قاعدة البيانات</h3>
+              <p class="text-[10px] text-gray-500 mt-0.5">تصدير الحسابات المسجلة والتذاكر والرحلات بملف CSV أو JSON</p>
+            </div>
+            <span class="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Database Export</span>
+          </div>
+
+          <!-- Primary Export Buttons -->
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="exportLatestRegistrationsCSV()"
+              class="py-3 px-3 rounded-xl bg-[#00C5A1] hover:bg-[#00b090] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <span>⬇ تصدير أحدث التسجيلات (CSV)</span>
+            </button>
+            <button type="button" onclick="exportFullDatabaseRegistrationsJSON()"
+              class="py-3 px-3 rounded-xl bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <span>⬇ تصدير السجل الكامل (JSON)</span>
+            </button>
+          </div>
+
+          <div id="admin-export-feedback" class="hidden text-[11px] font-extrabold text-[#009688] text-center bg-[#CCFBF1]/60 rounded-xl py-1.5 px-2"></div>
+
+          <!-- Preview of Latest Registered Accounts -->
+          <div class="space-y-1.5 pt-1">
+            <div class="text-[11px] font-extrabold text-[#1F1B38] flex items-center justify-between">
+              <span>أحدث الحسابات المسجلة (الأحدث أولاً):</span>
+              <span id="admin-latest-reg-count" class="text-[10px] text-[#009688]"></span>
+            </div>
+            <div id="admin-latest-registrations-list" class="max-h-40 overflow-y-auto space-y-1.5 pr-0.5">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: Add New Trip to Database -->
+        <form onsubmit="handleAdminAddTrip(event)" class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <div>
+              <h3 class="font-extrabold text-xs text-[#1F1B38]">➕ إضافة رحلة جديدة إلى قاعدة البيانات</h3>
+              <p class="text-[10px] text-gray-500 mt-0.5">تظهر الرحلة المضافة فوراً للسائقين والركاب في التطبيق</p>
+            </div>
+            <span class="bg-[#231942] text-[#00E5B0] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Add Trip</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="col-span-2">
+              <label class="block text-[11px] font-bold text-[#1F1B38] mb-1">خط السير (Route) *</label>
+              <select id="admin-trip-route" onchange="onAdminRouteSelectChange()" required
+                class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-extrabold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]">
+                <option value="117">أتوبيس القاهرة الجديدة (Route #117)</option>
+                <option value="112">الخط الثالث للمترو (Route #112)</option>
+                <option value="113">القطار الكهربائي الخفيف LRT (Route #113)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-[#1F1B38] mb-1">اسم / كود المركبة *</label>
+              <input id="admin-trip-vehicle" type="text" value="Public Bus - B305" required
+                class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-[#1F1B38] mb-1">السائق المعيّن *</label>
+              <select id="admin-trip-driver" required
+                class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]">
+                <!-- Populated dynamically from Drivers table -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-[#1F1B38] mb-1">موعد الانطلاق *</label>
+              <input id="admin-trip-departure" type="datetime-local" required
+                class="w-full px-2.5 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-[11px] font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-[#1F1B38] mb-1">سعة المقاعد (Capacity) *</label>
+              <input id="admin-trip-capacity" type="number" min="1" max="10000" value="50" required
+                class="w-full px-3 py-2 rounded-xl bg-[#F6F4EC] border border-gray-200 text-xs font-bold text-[#1F1B38] focus:outline-none focus:ring-2 focus:ring-[#00C5A1]" />
+            </div>
+          </div>
+
+          <button id="admin-add-trip-btn" type="submit"
+            class="w-full py-3 rounded-xl bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] font-extrabold text-xs flex items-center justify-center gap-2 shadow transition cursor-pointer">
+            <span>+ حفظ وإضافة الرحلة إلى قاعدة البيانات</span>
+          </button>
+
+          <div id="admin-add-trip-feedback" class="hidden text-[11px] font-extrabold text-center rounded-xl py-2 px-3"></div>
+        </form>
+
+        <!-- CARD 3: Recent Trips in Database -->
+        <div class="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-2.5">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 class="font-extrabold text-xs text-[#1F1B38]">🚍 أحدث الرحلات المضافة في قاعدة البيانات:</h3>
+            <span class="text-[10px] font-bold text-[#009688]">مباشر</span>
+          </div>
+          <div id="admin-recent-trips-list" class="space-y-2 max-h-60 overflow-y-auto">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>

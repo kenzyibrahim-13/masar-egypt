@@ -598,6 +598,54 @@ function showNewCardEntryFormForTicket() {
   renderSavedPaymentMethods();
 }
 
+function getCurrentUserRole(user = state.currentUser) {
+  const rawRole = user?.role?.value || user?.role || "Passenger";
+  if (rawRole === "Admin" || rawRole === "Driver" || rawRole === "Passenger") {
+    return rawRole;
+  }
+  return "Passenger";
+}
+
+function getRoleHomeScreen(role = getCurrentUserRole()) {
+  if (role === "Admin") return "admin";
+  if (role === "Driver") return "driver";
+  return "home";
+}
+
+function goToRoleHome() {
+  showScreen(getRoleHomeScreen());
+}
+
+function logoutUser() {
+  toggleProfileDrawer(false);
+  localStorage.removeItem("masar_active_user_id");
+  showScreen("login");
+}
+
+function syncDrawerNavigationForRole() {
+  const role = getCurrentUserRole();
+  const paxNav = document.getElementById("drawer-nav-passenger");
+  const driverNav = document.getElementById("drawer-nav-driver");
+  const adminNav = document.getElementById("drawer-nav-admin");
+  const paxBalBadge = document.getElementById("drawer-passenger-balance-badge");
+  const roleOnlyBadge = document.getElementById("drawer-role-only-badge");
+
+  if (paxNav) paxNav.classList.toggle("hidden", role !== "Passenger");
+  if (driverNav) driverNav.classList.toggle("hidden", role !== "Driver");
+  if (adminNav) adminNav.classList.toggle("hidden", role !== "Admin");
+
+  if (paxBalBadge) paxBalBadge.classList.toggle("hidden", role !== "Passenger");
+  if (roleOnlyBadge) {
+    if (role === "Passenger") {
+      roleOnlyBadge.classList.add("hidden");
+    } else {
+      roleOnlyBadge.classList.remove("hidden");
+      roleOnlyBadge.classList.add("inline-block");
+      roleOnlyBadge.textContent = role === "Admin" ? "🛡️ مدير النظام (Admin)" : "🚍 سائق معتمد (Driver)";
+    }
+  }
+}
+
 function updateUserDisplays() {
   const uName = state.currentUser?.Full_Name || "Mariam Fathy";
   const uEmail = state.currentUser?.email || "";
@@ -607,6 +655,7 @@ function updateUserDisplays() {
   document.querySelectorAll(".live-user-email").forEach(el => {
     el.textContent = uEmail;
   });
+  syncDrawerNavigationForRole();
   populateSettingsFields();
 }
 
@@ -617,6 +666,7 @@ function toggleProfileDrawer(open) {
   if (!drawer || !backdrop) return;
 
   if (open) {
+    syncDrawerNavigationForRole();
     drawer.classList.remove("hidden");
     backdrop.classList.remove("hidden");
   } else {
@@ -630,7 +680,21 @@ function navigateFromDrawer(screenId) {
   showScreen(screenId);
 }
 
+const PASSENGER_ONLY_SCREENS = new Set(["home", "qr", "payment", "wallet", "receipt", "history"]);
+const DRIVER_ONLY_SCREENS = new Set(["driver"]);
+const ADMIN_ONLY_SCREENS = new Set(["admin"]);
+
 function showScreen(screenId) {
+  // Enforce strict role separation so each role only accesses its own screens
+  const role = getCurrentUserRole();
+  if (PASSENGER_ONLY_SCREENS.has(screenId) && role !== "Passenger") {
+    screenId = getRoleHomeScreen(role);
+  } else if (DRIVER_ONLY_SCREENS.has(screenId) && role !== "Driver") {
+    screenId = getRoleHomeScreen(role);
+  } else if (ADMIN_ONLY_SCREENS.has(screenId) && role !== "Admin") {
+    screenId = getRoleHomeScreen(role);
+  }
+
   document.querySelectorAll(".app-screen").forEach(el => {
     el.classList.add("hidden");
   });
@@ -657,6 +721,11 @@ function showScreen(screenId) {
   } else if (screenId === "receipt") {
     startReceiptLiveCountdown();
     refreshTicketsFromDatabase();
+  } else if (screenId === "driver") {
+    renderDriverPortal();
+  } else if (screenId === "admin") {
+    initAdminTripFormDefaults();
+    renderAdminPortal();
   }
 
   updateFareDisplays();
@@ -1428,11 +1497,21 @@ function getTripDurationMinutes(routeId) {
 }
 
 function computeTripLiveStatus(trip, nowMs = Date.now()) {
+  const dbStatus = trip?.trip_status?.value || trip?.trip_status || "Scheduled";
   if (!trip?.departure) {
-    return { status: trip?.trip_status?.value || "Scheduled", depMs: null, arrMs: null };
+    return { status: dbStatus, depMs: null, arrMs: null };
   }
   const depMs = new Date(trip.departure).getTime();
   const arrMs = depMs + getTripDurationMinutes(getTripRouteId(trip)) * 60000;
+
+  // Respect manual Driver Start ("InTransit") and End ("Completed") actions stored in the database:
+  if (dbStatus === "Completed") {
+    return { status: "Completed", depMs, arrMs };
+  }
+  if (dbStatus === "InTransit") {
+    return { status: nowMs >= arrMs ? "Completed" : "InTransit", depMs, arrMs };
+  }
+
   let status = "Scheduled";
   if (nowMs >= arrMs) status = "Completed";
   else if (nowMs >= depMs) status = "InTransit";
@@ -1670,6 +1749,40 @@ function sanitizeUserObject(u) {
   return copy;
 }
 
+function fillRoleDemoLogin(role) {
+  const emailInput = document.getElementById("login-email");
+  const passInput = document.getElementById("login-password");
+  const statusEl = document.getElementById("login-status-msg");
+
+  const demoAccounts = {
+    Passenger: "Passenger1@example.com",
+    Driver: "Driver2@example.com",
+    Admin: "Admin1@example.com"
+  };
+
+  if (emailInput) emailInput.value = demoAccounts[role] || "Passenger1@example.com";
+  if (passInput) passInput.value = "Masar2026!";
+  if (statusEl) {
+    statusEl.textContent = `Ready to sign in as ${role} (${demoAccounts[role]})`;
+    statusEl.className = "text-[11px] text-[#009688] text-left mt-1.5 font-bold";
+  }
+
+  document.querySelectorAll(".role-demo-btn").forEach(btn => {
+    if (btn.dataset.demoRole === role) {
+      btn.className = "role-demo-btn py-1.5 px-2 rounded-lg bg-[#231942] text-[#00E5B0] text-[11px] font-extrabold text-center transition cursor-pointer";
+    } else {
+      btn.className = "role-demo-btn py-1.5 px-2 rounded-lg bg-white text-[#1F1B38] border border-gray-200 text-[11px] font-extrabold text-center hover:bg-[#CCFBF1]/50 transition cursor-pointer";
+    }
+  });
+}
+
+function onSignupRoleChange(role) {
+  const driverFields = document.getElementById("signup-driver-fields");
+  if (driverFields) {
+    driverFields.classList.toggle("hidden", role !== "Driver");
+  }
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const emailInput = document.getElementById("login-email").value.trim();
@@ -1739,6 +1852,7 @@ async function handleLogin(e) {
     }
 
     state.currentUser = loggedInUser;
+    localStorage.setItem("masar_active_user_id", String(loggedInUser.id || loggedInUser.user_id || ""));
     if (typeof loggedInUser.wallet_balance === "number") {
       state.walletBalance = loggedInUser.wallet_balance;
       state.cardBalance = loggedInUser.wallet_balance;
@@ -1746,9 +1860,12 @@ async function handleLogin(e) {
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
     renderTicketsHistory();
-    statusEl.textContent = `Welcome back, ${loggedInUser.Full_Name}!`;
+
+    const userRole = getCurrentUserRole(loggedInUser);
+    const targetScreen = getRoleHomeScreen(userRole);
+    statusEl.textContent = `Welcome back, ${loggedInUser.Full_Name} (${userRole})! Opening ${userRole} portal...`;
     statusEl.className = "text-xs text-[#00C5A1] mt-1.5 text-left font-bold";
-    setTimeout(() => showScreen("home"), 500);
+    setTimeout(() => showScreen(targetScreen), 450);
   } catch (err) {
     statusEl.textContent = err.message;
     statusEl.className = "text-xs text-red-600 mt-1.5 text-left font-medium";
@@ -1764,6 +1881,10 @@ async function handleSignUp(e) {
   const surname = document.getElementById("signup-surname").value.trim();
   const email = document.getElementById("signup-email").value.trim();
   const password = document.getElementById("signup-password").value;
+  const roleSelect = document.getElementById("signup-role");
+  const selectedRole = roleSelect?.value || "Passenger";
+  const driverType = document.getElementById("signup-driver-type")?.value || "Bus";
+  const vehicleNumber = document.getElementById("signup-vehicle-number")?.value.trim() || "";
   const btn = document.getElementById("signup-submit-btn");
   const statusEl = document.getElementById("signup-status-msg");
 
@@ -1780,6 +1901,7 @@ async function handleSignUp(e) {
     btn.textContent = "Creating Account...";
 
     let createdUser = null;
+    let createdDriver = null;
 
     if (!isStaticGitHubPages()) {
       try {
@@ -1789,7 +1911,10 @@ async function handleSignUp(e) {
           body: JSON.stringify({
             Full_Name: fullName,
             email: email,
-            password: password
+            password: password,
+            role: selectedRole,
+            driver_type: driverType,
+            vehicle_number: vehicleNumber
           })
         });
         const contentType = res.headers.get("content-type") || "";
@@ -1799,6 +1924,7 @@ async function handleSignUp(e) {
             throw new Error(data.error || "Failed to create account.");
           }
           createdUser = data.user;
+          createdDriver = data.driver || null;
         }
       } catch (serverErr) {
         if (serverErr.message && !serverErr.message.includes("Unexpected token") && !serverErr.message.includes("Failed to fetch")) {
@@ -1833,28 +1959,53 @@ async function handleSignUp(e) {
           Full_Name: fullName,
           email: email,
           language: "AR",
-          role: "Passenger",
+          role: selectedRole,
           Active: true,
           [hashFieldName]: passwordHash
         })
       });
       createdUser = sanitizeUserObject({ ...rawCreated, wallet_balance: 0.00 });
+
+      if (selectedRole === "Driver" && createdUser?.id) {
+        try {
+          createdDriver = await directDatabaseFetch(TABLES.DRIVERS, "", {
+            method: "POST",
+            body: JSON.stringify({
+              driver_type: driverType,
+              verification: true,
+              driving_license_no: `DL-EG-${1000 + Number(createdUser.id)}`,
+              vehicle_license_no: `VL-EG-${2000 + Number(createdUser.id)}`,
+              vehicle_number: vehicleNumber || `BUS-${createdUser.id}`,
+              user_id: [createdUser.id]
+            })
+          });
+        } catch (dErr) {
+          console.warn("Could not create driver row on signup:", dErr);
+        }
+      }
     }
 
     state.currentUser = createdUser;
+    localStorage.setItem("masar_active_user_id", String(createdUser.id || createdUser.user_id || ""));
     state.users.push(createdUser);
+    if (createdDriver) {
+      state.drivers.push(createdDriver);
+    }
     state.walletBalance = 0.00;
     state.cardBalance = 0.00;
-    await persistWalletBalance(0.00);
+    if (selectedRole === "Passenger") {
+      await persistWalletBalance(0.00);
+    }
     await syncUserWalletAndPaymentMethods();
     updateUserDisplays();
     renderTicketsHistory();
     renderDatabaseInspector();
 
-    statusEl.textContent = `Account created for "${fullName}"!`;
+    const targetScreen = getRoleHomeScreen(selectedRole);
+    statusEl.textContent = `Account created for "${fullName}" (${selectedRole})!`;
     statusEl.className = "text-xs text-[#00C5A1] mt-1.5 text-left font-bold";
 
-    setTimeout(() => showScreen("home"), 700);
+    setTimeout(() => showScreen(targetScreen), 600);
   } catch (err) {
     statusEl.textContent = err.message;
     statusEl.className = "text-xs text-red-600 mt-1.5 text-left font-medium";
@@ -2857,6 +3008,608 @@ function syncCategoryHeaderAndStationsKeepStations() {
   chooseTripOnHome(next.id, routeId, calculateStationFare().unitFare, next.vehicle_label, dInfo.driverName, dInfo.vehicleNumber);
 }
 
+// ========================================================
+// DRIVER PORTAL: Choose Trips to Take + Start / End Trip (Updates Database & Passenger Profile)
+// ========================================================
+
+function getRouteArabicTitle(routeId) {
+  const num = Number(routeId);
+  if (num === 112) return "الخط الثالث للمترو (عدلي منصور ↔ جامعة القاهرة)";
+  if (num === 113) return "القطار الكهربائي الخفيف LRT";
+  if (num === 117) return "أتوبيس القاهرة الجديدة";
+  const r = state.routes.find(x => Number(x.route_id || x.id) === num);
+  return r?.name_ar || `مسار #${num}`;
+}
+
+async function resolveCurrentDriverRow() {
+  const uid = Number(state.currentUser?.id || state.currentUser?.user_id || 0);
+  if (!uid) return state.drivers[0] || null;
+
+  let driverRow = state.drivers.find(d =>
+    d.user_id?.some(u => Number(u.id) === uid || Number(u.value) === uid)
+  );
+  if (driverRow) return driverRow;
+
+  // If this Driver user does not yet have a row in Drivers (1278317), create one automatically
+  try {
+    const created = await baserowFetch(TABLES.DRIVERS, "", {
+      method: "POST",
+      body: JSON.stringify({
+        driver_type: "Bus",
+        verification: true,
+        driving_license_no: `DL-EG-${1000 + uid}`,
+        vehicle_license_no: `VL-EG-${2000 + uid}`,
+        vehicle_number: `BUS-${uid}`,
+        user_id: [uid]
+      })
+    });
+    if (created) {
+      state.drivers.push(created);
+      return created;
+    }
+  } catch (err) {
+    console.warn("Could not auto-create driver profile row:", err);
+  }
+  return state.drivers[0] || null;
+}
+
+function showDriverFeedback(msg, isError = false) {
+  const el = document.getElementById("driver-action-feedback");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = isError
+    ? "rounded-2xl px-3.5 py-2.5 text-xs font-extrabold text-center shadow-xs bg-red-100 text-red-700 block"
+    : "rounded-2xl px-3.5 py-2.5 text-xs font-extrabold text-center shadow-xs bg-[#CCFBF1] text-[#0F766E] block";
+}
+
+async function refreshDriverPortalData() {
+  try {
+    const [tripsRes, driversRes] = await Promise.all([
+      baserowFetchAll(TABLES.TRIPS),
+      baserowFetch(TABLES.DRIVERS, "&size=100")
+    ]);
+    if (tripsRes?.results) state.trips = tripsRes.results;
+    if (driversRes?.results) state.drivers = driversRes.results;
+    renderDriverPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.warn("Could not refresh driver portal:", err);
+  }
+}
+
+async function renderDriverPortal() {
+  const myListEl = document.getElementById("driver-my-trips-list");
+  const availListEl = document.getElementById("driver-available-trips-list");
+  if (!myListEl || !availListEl) return;
+
+  const driverRow = await resolveCurrentDriverRow();
+  const driverId = Number(driverRow?.id || driverRow?.driver_id || 3);
+  const vNumEl = document.getElementById("driver-portal-vehicle-num");
+  const vTypeEl = document.getElementById("driver-portal-vehicle-type");
+  const activeCountEl = document.getElementById("driver-portal-active-count");
+
+  if (vNumEl) vNumEl.textContent = driverRow?.vehicle_number || "TEST-1003";
+  if (vTypeEl) vTypeEl.textContent = driverRow?.driver_type?.value || driverRow?.driver_type || "Bus";
+
+  const nowMs = Date.now();
+  const allEnriched = state.trips.map(t => {
+    const live = computeTripLiveStatus(t, nowMs);
+    const assignedDriverId = Number(t.driver?.[0]?.id || t.driver?.[0]?.value || 0);
+    const routeId = getTripRouteId(t);
+    const depDate = t.departure ? new Date(t.departure) : new Date();
+    const depTimeStr = depDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const depDateStr = depDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    return {
+      ...t,
+      liveStatus: live.status,
+      depMs: live.depMs || 0,
+      assignedDriverId,
+      routeId,
+      routeTitleAr: getRouteArabicTitle(routeId),
+      depTimeStr,
+      depDateStr
+    };
+  });
+
+  // 1. Driver's own trips (InTransit first, then upcoming Scheduled, then recent Completed)
+  const myTrips = allEnriched
+    .filter(t => t.assignedDriverId === driverId)
+    .sort((a, b) => {
+      const rank = s => (s === "InTransit" ? 0 : s === "Scheduled" ? 1 : 2);
+      if (rank(a.liveStatus) !== rank(b.liveStatus)) return rank(a.liveStatus) - rank(b.liveStatus);
+      return a.depMs - b.depMs;
+    });
+
+  const activeMyTrips = myTrips.filter(t => t.liveStatus !== "Completed");
+  if (activeCountEl) activeCountEl.textContent = String(activeMyTrips.length);
+
+  const displayedMyTrips = [
+    ...activeMyTrips,
+    ...myTrips.filter(t => t.liveStatus === "Completed").slice(-3).reverse()
+  ];
+
+  if (displayedMyTrips.length === 0) {
+    myListEl.innerHTML = `
+      <div class="bg-[#F6F4EC] rounded-2xl p-4 text-center text-xs font-bold text-gray-500">
+        لا توجد رحلات مستلمة حالياً — اختر رحلة من القائمة بالأسفل لاستلامها وبدء الرحلة.
+      </div>
+    `;
+  } else {
+    myListEl.innerHTML = displayedMyTrips.map(t => {
+      const statusBadge = t.liveStatus === "InTransit"
+        ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">🚍 في الطريق (InTransit)</span>`
+        : t.liveStatus === "Completed"
+        ? `<span class="bg-gray-200 text-gray-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">✓ مكتملة (Completed)</span>`
+        : `<span class="bg-[#FEF3C7] text-[#B45309] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">🕒 مجدولة (Scheduled)</span>`;
+
+      const booked = Number(t.booked_seats || 0);
+      const cap = Number(t.capacity || 50);
+
+      let actionButtons = "";
+      if (t.liveStatus === "Scheduled") {
+        actionButtons = `
+          <div class="flex items-center gap-2 pt-2 border-t border-gray-200/70">
+            <button onclick="driverStartTrip(${t.id})"
+              class="flex-1 py-2.5 px-3 rounded-xl bg-[#00C5A1] hover:bg-[#00b090] text-[#1F1B38] font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <span>▶ بدء الرحلة (Start Trip)</span>
+            </button>
+            <button onclick="driverEndTrip(${t.id})"
+              class="py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-[11px] transition cursor-pointer">
+              <span>⏹ إنهاء</span>
+            </button>
+          </div>
+        `;
+      } else if (t.liveStatus === "InTransit") {
+        actionButtons = `
+          <div class="flex items-center gap-2 pt-2 border-t border-gray-200/70">
+            <button onclick="driverEndTrip(${t.id})"
+              class="w-full py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <span>⏹ إنهاء الرحلة الآن (End Trip — Completed)</span>
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="bg-[#F6F4EC] rounded-2xl p-3 border-2 ${t.liveStatus === 'InTransit' ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200/80'} space-y-2">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5">
+              <span class="bg-[#231942] text-[#00E5B0] text-[10px] font-extrabold px-2 py-0.5 rounded-md">Trip #${t.trip_id || t.id}</span>
+              ${statusBadge}
+            </div>
+            <span class="text-[11px] font-extrabold text-[#009688]">📅 ${t.depDateStr} • ${t.depTimeStr}</span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-extrabold text-[#1F1B38]">${t.routeTitleAr}</div>
+              <div class="text-[11px] font-bold text-gray-600 mt-0.5">المركبة: ${t.vehicle_label} • الحجوزات: ${booked} / ${cap} راكب</div>
+            </div>
+          </div>
+
+          ${actionButtons}
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 2. Available Scheduled trips that the driver can choose / take
+  const routeFilter = document.getElementById("driver-available-route-filter")?.value || "all";
+  const availableTrips = allEnriched
+    .filter(t => t.liveStatus !== "Completed" && t.assignedDriverId !== driverId)
+    .filter(t => routeFilter === "all" || String(t.routeId) === String(routeFilter))
+    .sort((a, b) => a.depMs - b.depMs)
+    .slice(0, 25);
+
+  if (availableTrips.length === 0) {
+    availListEl.innerHTML = `
+      <div class="bg-[#F6F4EC] rounded-2xl p-4 text-center text-xs font-bold text-gray-500">
+        جميع الرحلات القادمة في هذا الخط مستلمة بالفعل في قائمة رحلاتك أعلاه.
+      </div>
+    `;
+  } else {
+    availListEl.innerHTML = availableTrips.map(t => {
+      const currentDInfo = resolveDriverDetails(t.driver);
+      return `
+        <div class="bg-[#F6F4EC] rounded-2xl p-3 border border-gray-200/80 flex items-center justify-between gap-2">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-extrabold px-2 py-0.5 rounded-md">Trip #${t.trip_id || t.id}</span>
+              <span class="text-xs font-extrabold text-[#1F1B38]">${t.routeTitleAr}</span>
+            </div>
+            <div class="text-[11px] font-bold text-[#009688]">${t.vehicle_label} • الموعد: ${t.depDateStr} (${t.depTimeStr})</div>
+            <div class="text-[10px] text-gray-500">السائق الحالي: ${currentDInfo.driverName}</div>
+          </div>
+
+          <button onclick="driverTakeTrip(${t.id})"
+            class="px-3 py-2 rounded-xl bg-[#231942] hover:bg-[#1a1233] text-[#00E5B0] text-[11px] font-extrabold shrink-0 shadow-xs transition cursor-pointer">
+            + اختيار الرحلة
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+async function driverTakeTrip(tripRowId) {
+  try {
+    const driverRow = await resolveCurrentDriverRow();
+    const driverId = Number(driverRow?.id || driverRow?.driver_id || 3);
+    showDriverFeedback(`جاري تسجيل استلام الرحلة #${tripRowId} باسمك في قاعدة البيانات...`);
+
+    const updated = await baserowRowPatch(TABLES.TRIPS, tripRowId, {
+      driver: [driverId]
+    });
+
+    const tripObj = state.trips.find(t => Number(t.id) === Number(tripRowId));
+    if (tripObj) {
+      tripObj.driver = updated?.driver || [{ id: driverId, value: String(driverId) }];
+    }
+
+    showDriverFeedback(`✓ تم اختيار واستلام الرحلة #${tripRowId} بنجاح! يمكنك الآن بدء الرحلة أو إنهاؤها.`);
+    renderDriverPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.error("Failed to assign trip to driver:", err);
+    showDriverFeedback(`تعذر استلام الرحلة: ${err.message}`, true);
+  }
+}
+
+async function driverStartTrip(tripRowId) {
+  try {
+    const driverRow = await resolveCurrentDriverRow();
+    const driverId = Number(driverRow?.id || driverRow?.driver_id || 3);
+    showDriverFeedback(`جاري بدء الرحلة #${tripRowId} وتحديث حالتها إلى (في الطريق - InTransit) للركاب...`);
+
+    const updated = await baserowRowPatch(TABLES.TRIPS, tripRowId, {
+      trip_status: "InTransit",
+      driver: [driverId]
+    });
+
+    const tripObj = state.trips.find(t => Number(t.id) === Number(tripRowId));
+    if (tripObj) {
+      tripObj.trip_status = updated?.trip_status || { value: "InTransit" };
+      tripObj.driver = updated?.driver || [{ id: driverId, value: String(driverId) }];
+    }
+
+    showDriverFeedback(`🚍 بدأت الرحلة #${tripRowId}! تظهر الآن لجميع الركاب بحالة (في الطريق - InTransit).`);
+    renderDriverPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.error("Failed to start trip:", err);
+    showDriverFeedback(`تعذر بدء الرحلة: ${err.message}`, true);
+  }
+}
+
+async function driverEndTrip(tripRowId) {
+  try {
+    showDriverFeedback(`جاري إنهاء الرحلة #${tripRowId} وتحديث حالتها إلى (مكتملة - Completed) في قاعدة البيانات...`);
+
+    const updated = await baserowRowPatch(TABLES.TRIPS, tripRowId, {
+      trip_status: "Completed"
+    });
+
+    const tripObj = state.trips.find(t => Number(t.id) === Number(tripRowId));
+    if (tripObj) {
+      tripObj.trip_status = updated?.trip_status || { value: "Completed" };
+    }
+
+    showDriverFeedback(`✓ تم إنهاء الرحلة #${tripRowId} (Completed) وإزالتها من الرحلات المتاحة للركاب.`);
+    renderDriverPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.error("Failed to end trip:", err);
+    showDriverFeedback(`تعذر إنهاء الرحلة: ${err.message}`, true);
+  }
+}
+
+// ========================================================
+// ADMIN PORTAL: Add Trips to Database + Export Latest Registrations
+// ========================================================
+
+function initAdminTripFormDefaults() {
+  const depInput = document.getElementById("admin-trip-departure");
+  if (depInput && !depInput.value) {
+    const nextHour = new Date(Date.now() + 60 * 60000);
+    const pad = n => String(n).padStart(2, "0");
+    const localIso = `${nextHour.getFullYear()}-${pad(nextHour.getMonth() + 1)}-${pad(nextHour.getDate())}T${pad(nextHour.getHours())}:${pad(nextHour.getMinutes())}`;
+    depInput.value = localIso;
+  }
+  populateAdminDriversDropdown();
+}
+
+function populateAdminDriversDropdown() {
+  const selectEl = document.getElementById("admin-trip-driver");
+  if (!selectEl) return;
+
+  const driversList = state.drivers.length > 0 ? state.drivers : [{ id: 3, vehicle_number: "TEST-1003", driver_type: { value: "Bus" } }];
+  selectEl.innerHTML = driversList.map(d => {
+    const dId = d.id || d.driver_id;
+    const linkedUid = d.user_id?.[0]?.id || Number(d.user_id?.[0]?.value);
+    const uRow = state.users.find(u => Number(u.id || u.user_id) === Number(linkedUid));
+    const dName = uRow?.Full_Name || (dId === 1 ? "Salma Adel" : dId === 3 ? "Hassan Mahmoud" : dId === 2 ? "Ahmed Nabil" : `Driver #${dId}`);
+    const dType = d.driver_type?.value || d.driver_type || "Bus";
+    return `<option value="${dId}">${dName} (${dType} • ${d.vehicle_number || "TEST"})</option>`;
+  }).join("");
+}
+
+function onAdminRouteSelectChange() {
+  const routeId = Number(document.getElementById("admin-trip-route")?.value || 117);
+  const vehicleInput = document.getElementById("admin-trip-vehicle");
+  const capInput = document.getElementById("admin-trip-capacity");
+
+  if (routeId === 112) {
+    if (vehicleInput) vehicleInput.value = "Metro Line 3 - M105";
+    if (capInput) capInput.value = "9999";
+  } else if (routeId === 113) {
+    if (vehicleInput) vehicleInput.value = "LRT - L205";
+    if (capInput) capInput.value = "9999";
+  } else {
+    if (vehicleInput) vehicleInput.value = "Public Bus - B305";
+    if (capInput) capInput.value = "50";
+  }
+}
+
+async function refreshAdminPortalData() {
+  try {
+    const [usersRes, tripsRes, driversRes, ticketsRes] = await Promise.all([
+      baserowFetch(TABLES.USERS, "&size=200"),
+      baserowFetchAll(TABLES.TRIPS),
+      baserowFetch(TABLES.DRIVERS, "&size=100"),
+      baserowFetch(TABLES.TICKETS, "&size=200")
+    ]);
+    if (usersRes?.results) state.users = usersRes.results.map(sanitizeUserObject);
+    if (tripsRes?.results) state.trips = tripsRes.results;
+    if (driversRes?.results) state.drivers = driversRes.results;
+    if (ticketsRes?.results) state.tickets = ticketsRes.results;
+    renderAdminPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.warn("Could not refresh admin portal:", err);
+  }
+}
+
+function renderAdminPortal() {
+  const statUsers = document.getElementById("admin-stat-users");
+  const statTrips = document.getElementById("admin-stat-trips");
+  const statDrivers = document.getElementById("admin-stat-drivers");
+  const statTickets = document.getElementById("admin-stat-tickets");
+
+  if (statUsers) statUsers.textContent = String(state.users.length);
+  if (statTrips) statTrips.textContent = String(state.trips.length);
+  if (statDrivers) statDrivers.textContent = String(state.drivers.length);
+  if (statTickets) statTickets.textContent = String(state.tickets.length);
+
+  populateAdminDriversDropdown();
+
+  // 1. Render Latest Registered Users (newest first)
+  const regListEl = document.getElementById("admin-latest-registrations-list");
+  const regCountEl = document.getElementById("admin-latest-reg-count");
+  const sortedUsers = [...state.users].sort((a, b) => Number(b.id || b.user_id || 0) - Number(a.id || a.user_id || 0));
+
+  if (regCountEl) regCountEl.textContent = `إجمالي ${sortedUsers.length} حساب`;
+
+  if (regListEl) {
+    regListEl.innerHTML = sortedUsers.slice(0, 12).map(u => {
+      const uid = u.user_id || u.id;
+      const role = getCurrentUserRole(u);
+      const roleBadge = role === "Admin"
+        ? `<span class="bg-purple-100 text-purple-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">Admin</span>`
+        : role === "Driver"
+        ? `<span class="bg-blue-100 text-blue-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">Driver</span>`
+        : `<span class="bg-[#CCFBF1] text-[#0F766E] text-[9px] font-extrabold px-2 py-0.5 rounded-full">Passenger</span>`;
+
+      return `
+        <div class="bg-[#F6F4EC] rounded-xl px-3 py-2 flex items-center justify-between text-xs border border-gray-200/70">
+          <div class="flex items-center gap-2">
+            <span class="bg-[#231942] text-[#00E5B0] text-[9px] font-extrabold px-2 py-0.5 rounded-md">#${uid}</span>
+            <div>
+              <div class="font-extrabold text-[#1F1B38] text-[11px]">${u.Full_Name || "User"}</div>
+              <div class="text-[10px] text-gray-500">${u.email || ""}</div>
+            </div>
+          </div>
+          ${roleBadge}
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 2. Render Recent Trips in Database
+  const recentTripsEl = document.getElementById("admin-recent-trips-list");
+  if (recentTripsEl) {
+    const newestTrips = [...state.trips]
+      .sort((a, b) => Number(b.id || b.trip_id || 0) - Number(a.id || a.trip_id || 0))
+      .slice(0, 12);
+
+    recentTripsEl.innerHTML = newestTrips.map(t => {
+      const live = computeTripLiveStatus(t);
+      const routeId = getTripRouteId(t);
+      const dInfo = resolveDriverDetails(t.driver);
+      const depDate = t.departure ? new Date(t.departure) : new Date();
+      const depStr = depDate.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+      const statusBadge = live.status === "InTransit"
+        ? `<span class="bg-blue-100 text-blue-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">🚍 في الطريق</span>`
+        : live.status === "Completed"
+        ? `<span class="bg-gray-200 text-gray-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full">✓ مكتملة</span>`
+        : `<span class="bg-[#FEF3C7] text-[#B45309] text-[9px] font-extrabold px-2 py-0.5 rounded-full">🕒 مجدولة</span>`;
+
+      return `
+        <div class="bg-[#F6F4EC] rounded-xl p-2.5 border border-gray-200/70 flex items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="bg-[#231942] text-[#00E5B0] text-[9px] font-extrabold px-2 py-0.5 rounded-md">Trip #${t.trip_id || t.id}</span>
+              ${statusBadge}
+              <span class="text-[11px] font-extrabold text-[#1F1B38]">${getRouteArabicTitle(routeId)}</span>
+            </div>
+            <div class="text-[10px] text-gray-600 font-bold mt-0.5">
+              ${t.vehicle_label} • السائق: ${dInfo.driverName} • الموعد: ${depStr}
+            </div>
+          </div>
+          <div class="text-[10px] font-extrabold text-[#009688] shrink-0">
+            ${t.booked_seats || 0}/${t.capacity || 50} مقعد
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+async function handleAdminAddTrip(e) {
+  e.preventDefault();
+  const routeId = Number(document.getElementById("admin-trip-route")?.value || 117);
+  const vehicleLabel = document.getElementById("admin-trip-vehicle")?.value.trim() || "Public Bus - B305";
+  const driverId = Number(document.getElementById("admin-trip-driver")?.value || 3);
+  const depVal = document.getElementById("admin-trip-departure")?.value;
+  const capacity = Number(document.getElementById("admin-trip-capacity")?.value || 50);
+  const btn = document.getElementById("admin-add-trip-btn");
+  const feedback = document.getElementById("admin-add-trip-feedback");
+
+  const depIso = depVal ? new Date(depVal).toISOString() : new Date(Date.now() + 3600000).toISOString();
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>جاري حفظ الرحلة في قاعدة البيانات...</span>`;
+    }
+
+    const createdTrip = await baserowFetch(TABLES.TRIPS, "", {
+      method: "POST",
+      body: JSON.stringify({
+        vehicle_label: vehicleLabel,
+        capacity: capacity,
+        booked_seats: 0,
+        departure: depIso,
+        trip_status: "Scheduled",
+        route_id: [routeId],
+        driver: [driverId]
+      })
+    });
+
+    if (createdTrip) {
+      state.trips.unshift(createdTrip);
+    }
+
+    if (feedback) {
+      feedback.className = "text-[11px] font-extrabold text-center rounded-xl py-2 px-3 bg-[#CCFBF1] text-[#0F766E] block";
+      feedback.textContent = `✓ تم إضافة الرحلة الجديدة (Trip #${createdTrip?.trip_id || createdTrip?.id}) بنجاح وأصبحت متاحة للسائقين والركاب!`;
+    }
+
+    renderAdminPortal();
+    renderDatabaseRoutes();
+  } catch (err) {
+    console.error("Failed to add trip:", err);
+    if (feedback) {
+      feedback.className = "text-[11px] font-extrabold text-center rounded-xl py-2 px-3 bg-red-100 text-red-700 block";
+      feedback.textContent = `تعذر إضافة الرحلة: ${err.message}`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>+ حفظ وإضافة الرحلة إلى قاعدة البيانات</span>`;
+    }
+  }
+}
+
+function triggerFileDownload(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function exportLatestRegistrationsCSV() {
+  const feedback = document.getElementById("admin-export-feedback");
+  try {
+    await refreshAdminPortalData();
+  } catch {
+    // Use existing loaded state if offline
+  }
+
+  const sortedUsers = [...state.users].sort((a, b) => Number(b.id || b.user_id || 0) - Number(a.id || a.user_id || 0));
+  const headers = ["User_ID", "Full_Name", "Email", "Role", "Language", "Active", "Tickets_Booked", "Linked_Driver_Vehicle"];
+
+  const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
+
+  const rows = sortedUsers.map(u => {
+    const uid = Number(u.id || u.user_id || 0);
+    const role = getCurrentUserRole(u);
+    const lang = u.language?.value || u.language || "AR";
+    const active = u.Active !== false ? "Active" : "Inactive";
+    const userTicketsCount = state.tickets.filter(t =>
+      t.user_id?.some(x => Number(x.id) === uid || Number(x.value) === uid)
+    ).length;
+    const driverRow = state.drivers.find(d =>
+      d.user_id?.some(x => Number(x.id) === uid || Number(x.value) === uid)
+    );
+    const vehicle = driverRow?.vehicle_number || "-";
+
+    return [
+      uid,
+      u.Full_Name || "",
+      u.email || "",
+      role,
+      lang,
+      active,
+      userTicketsCount,
+      vehicle
+    ].map(escapeCsv).join(",");
+  });
+
+  // Include UTF-8 BOM so Arabic names open cleanly in Excel
+  const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+  const dateStr = new Date().toISOString().slice(0, 10);
+  triggerFileDownload(`masar_latest_registrations_${dateStr}.csv`, csvContent, "text/csv;charset=utf-8;");
+
+  if (feedback) {
+    feedback.textContent = `✓ تم تصدير ${sortedUsers.length} حساب مسجل إلى ملف CSV بنجاح!`;
+    feedback.classList.remove("hidden");
+  }
+}
+
+async function exportFullDatabaseRegistrationsJSON() {
+  const feedback = document.getElementById("admin-export-feedback");
+  try {
+    await refreshAdminPortalData();
+  } catch {
+    // Use current state
+  }
+
+  const sortedUsers = [...state.users]
+    .sort((a, b) => Number(b.id || b.user_id || 0) - Number(a.id || a.user_id || 0))
+    .map(sanitizeUserObject);
+
+  const exportPayload = {
+    exported_at: new Date().toISOString(),
+    summary: {
+      total_registered_users: sortedUsers.length,
+      total_drivers: state.drivers.length,
+      total_trips: state.trips.length,
+      total_tickets: state.tickets.length
+    },
+    latest_registrations: sortedUsers,
+    drivers: state.drivers,
+    trips: state.trips,
+    tickets: state.tickets
+  };
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  triggerFileDownload(
+    `masar_database_export_${dateStr}.json`,
+    JSON.stringify(exportPayload, null, 2),
+    "application/json;charset=utf-8;"
+  );
+
+  if (feedback) {
+    feedback.textContent = `✓ تم تصدير السجل الكامل لقاعدة البيانات (${sortedUsers.length} مستخدم و ${state.trips.length} رحلة) بملف JSON!`;
+    feedback.classList.remove("hidden");
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   showScreen("splash");
   resetRechargeMethodSelection();
@@ -2883,4 +3636,24 @@ window.addEventListener("DOMContentLoaded", () => {
       refreshTicketsFromDatabase();
     }
   }, 4000);
+
+  // Live poll Trips from database every 8 seconds when viewing Home (Passenger) or Driver portal
+  // so driver Start/End/Take Trip actions and Admin new trips reflect live across profiles
+  setInterval(async () => {
+    const homeScreen = document.getElementById("screen-home");
+    const driverScreen = document.getElementById("screen-driver");
+    const isHomeVisible = homeScreen && !homeScreen.classList.contains("hidden");
+    const isDriverVisible = driverScreen && !driverScreen.classList.contains("hidden");
+    if (!isHomeVisible && !isDriverVisible) return;
+    try {
+      const tripsRes = await baserowFetchAll(TABLES.TRIPS);
+      if (tripsRes?.results) {
+        state.trips = tripsRes.results;
+        if (isHomeVisible) renderDatabaseRoutes();
+        if (isDriverVisible) renderDriverPortal();
+      }
+    } catch {
+      // ignore transient network error
+    }
+  }, 8000);
 });

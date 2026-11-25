@@ -227,12 +227,13 @@ const server = http.createServer(async (req, res) => {
           ? "Password_hash"
           : "password_hash";
 
-      // Force role = "Passenger" and save only the bcrypt hash
+      // Accept role ("Passenger", "Driver", "Admin") and save only the bcrypt hash
+      const requestedRole = ["Passenger", "Driver", "Admin"].includes(body.role) ? body.role : "Passenger";
       const newUserPayload = {
         Full_Name: fullName,
         email: email,
         language: "AR",
-        role: "Passenger",
+        role: requestedRole,
         Active: true,
         [hashFieldName]: passwordHash
       };
@@ -270,9 +271,34 @@ const server = http.createServer(async (req, res) => {
         setUserBalanceInStore(newUserId, 0.00);
       }
 
+      // If registering as a Driver, also create a linked row in Drivers table (1278317)
+      let createdDriverRow = null;
+      if (requestedRole === "Driver" && newUserId) {
+        const driverType = ["Bus", "Train", "Microbus"].includes(body.driver_type) ? body.driver_type : "Bus";
+        const vehicleNum = String(body.vehicle_number || "").trim() || `BUS-${newUserId}`;
+        const dRes = await baserowServerFetch(
+          `/api/database/rows/table/1278317/?user_field_names=true`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              driver_type: driverType,
+              verification: true,
+              driving_license_no: `DL-EG-${1000 + Number(newUserId)}`,
+              vehicle_license_no: `VL-EG-${2000 + Number(newUserId)}`,
+              vehicle_number: vehicleNum,
+              user_id: [newUserId]
+            })
+          }
+        );
+        if (dRes.ok) {
+          createdDriverRow = dRes.data;
+        }
+      }
+
       // Return sanitized user (stripPasswordHash guarantees hash is never returned)
       return sendJson(res, 201, {
-        user: { ...createRes.data, wallet_balance: 0.00 }
+        user: { ...createRes.data, wallet_balance: 0.00 },
+        driver: createdDriverRow
       });
     }
 
@@ -667,8 +693,18 @@ async function updateTripStatuses() {
 
       const depMs = new Date(trip.departure).getTime();
       const arrMs = depMs + durationMin * 60000;
-      const status = now >= arrMs ? "Completed" : now >= depMs ? "InTransit" : "Scheduled";
       const current = trip.trip_status?.value || "Scheduled";
+
+      // Respect manual driver start/end actions:
+      // - Once Completed, never revert back to InTransit or Scheduled
+      // - Once InTransit (started by driver), never revert back to Scheduled
+      if (current === "Completed") continue;
+      let status = current;
+      if (now >= arrMs) {
+        status = "Completed";
+      } else if (now >= depMs && current === "Scheduled") {
+        status = "InTransit";
+      }
       if (status === current) continue;
 
       await baserowServerFetch(`/api/database/rows/table/${TRIPS_SWEEP_TABLE_ID}/${trip.id}/?user_field_names=true`, {
